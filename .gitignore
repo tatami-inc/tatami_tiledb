@@ -1,0 +1,4 @@
+build
+tests/lib
+tests/src/foo.cpp
+*.swp
