@@ -139,7 +139,9 @@ public:
     }
 
     bool uses_oracle(bool) const {
-        return true;
+        // The oracle won't necessarily be used if the cache size is non-zero,
+        // but if the cache is empty, the oracle definitely _won't_ be used.
+        return cache_size_in_elements > 0;
     }
 
     using tatami::Matrix<Value_, Index_>::dense_row;
@@ -167,7 +169,11 @@ public:
             auto chunk_dim = parent->template get_target_chunk_dim<accrow_>();
             chunk_size_in_elements = static_cast<size_t>(chunk_dim) * static_cast<size_t>(other_dim);
             num_chunks_in_cache = static_cast<double>(parent->cache_size_in_elements) / chunk_size_in_elements;
-            historian.reset(new LruCache<accrow_>(num_chunks_in_cache));
+
+            // Only set up the LRU cache if there is a non-zero number of chunks.
+            if (num_chunks_in_cache > 0) {
+                historian.reset(new LruCache<accrow_>(num_chunks_in_cache));
+            }
         }
 
     public:
@@ -391,10 +397,13 @@ private:
         }
 
         void set_oracle(std::unique_ptr<tatami::Oracle<Index_> > o) {
-            auto chunk_mydim = parent->template get_target_chunk_dim<accrow_>();
-            size_t max_predictions = static_cast<size_t>(base.num_chunks_in_cache) * chunk_mydim * 2; // double the cache size, basically.
-            base.futurist.reset(new OracleCache<accrow_>(std::move(o), max_predictions, base.num_chunks_in_cache));
-            base.historian.reset();
+            // The oracle won't have any effect if no caching is allowed.
+            if (base.num_chunks_in_cache > 0) {
+                auto chunk_mydim = parent->template get_target_chunk_dim<accrow_>();
+                size_t max_predictions = static_cast<size_t>(base.num_chunks_in_cache) * chunk_mydim * 2; // double the cache size, basically.
+                base.futurist.reset(new OracleCache<accrow_>(std::move(o), max_predictions, base.num_chunks_in_cache));
+                base.historian.reset();
+            }
         }
     };
 
