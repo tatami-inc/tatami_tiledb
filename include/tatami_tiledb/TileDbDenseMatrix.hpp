@@ -39,7 +39,7 @@ public:
     TileDbDenseMatrix(std::string uri, std::string attribute, size_t cache_limit = 100000000) : 
         location(std::move(uri)), 
         attr(std::move(attribute)), 
-        total_cache_size(static_cast<double>(cache_limit) / sizeof(Value_)) 
+        cache_size_in_elements(static_cast<double>(cache_limit) / sizeof(Value_)) 
     {
         tiledb::Context ctx;
         tiledb::ArraySchema schema(ctx, location);
@@ -80,7 +80,7 @@ public:
 
 private:
     std::string location, attr;
-    size_t total_cache_size;
+    size_t cache_size_in_elements;
 
     int first_offset, second_offset;
     Index_ first_dim, second_dim;
@@ -165,9 +165,9 @@ public:
 
         void set_cache(const TileDbDenseMatrix* parent, Index_ other_dim) {
             auto chunk_dim = parent->template get_target_chunk_dim<accrow_>();
-            per_cache_size = static_cast<size_t>(chunk_dim) * static_cast<size_t>(other_dim);
-            num_chunks = static_cast<double>(parent->total_cache_size) / per_cache_size;
-            historian.reset(new LruCache<accrow_>(num_chunks));
+            chunk_size_in_elements = static_cast<size_t>(chunk_dim) * static_cast<size_t>(other_dim);
+            num_chunks_in_cache = static_cast<double>(parent->cache_size_in_elements) / chunk_size_in_elements;
+            historian.reset(new LruCache<accrow_>(num_chunks_in_cache));
         }
 
     public:
@@ -177,8 +177,8 @@ public:
 
     public:
         // Caching members.
-        size_t per_cache_size;
-        Index_ num_chunks;
+        size_t chunk_size_in_elements;
+        Index_ num_chunks_in_cache;
 
         // Cache with an oracle.
         std::unique_ptr<OracleCache<accrow_> > futurist;
@@ -200,10 +200,12 @@ private:
         auto secondary_offset = (dimdex == 1 ? second_offset : first_offset);
         constexpr bool indexed = std::is_same<ExtractType_, std::vector<Index_> >::value;
         if constexpr(indexed) {
-            for (auto i : extract_value) {
-                auto adj = i + secondary_offset;
-                subarray.add_range(dimdex, adj, adj);
-            }
+            tatami::process_consecutive_indices(extract_value.data(), extract_length,
+                [&](Index_ s, Index_ l) {
+                    auto start = secondary_offset + s;
+                    subarray.add_range(dimdex, start, start + l - 1);
+                }
+            );
         } else {
             auto secondary_start = secondary_offset + extract_value;
             subarray.add_range(dimdex, secondary_start, secondary_start + extract_length - 1);
@@ -258,7 +260,7 @@ private:
                 return !x.empty();
             },
             /* allocate = */ [&](Chunk& x) -> void {
-                x.resize(work.per_cache_size);
+                x.resize(work.chunk_size_in_elements);
             },
             /* populate = */ [&](const std::vector<std::pair<Index_, Index_> >& chunks_in_need, std::vector<Chunk>& chunk_data) -> void {
 #ifndef TATAMI_TILEDB_PARALLEL_LOCK
@@ -292,7 +294,7 @@ private:
         const auto& cache_target = work.historian->find_chunk(
             chunk,
             /* create = */ [&]() -> Chunk {
-                return Chunk(work.per_cache_size);
+                return Chunk(work.chunk_size_in_elements);
             },
             /* populate = */ [&](Index_ id, Chunk& chunk_contents) -> void {
                 Index_ actual_dim;
@@ -320,7 +322,7 @@ private:
     template<bool accrow_, typename ExtractType_>
     const Value_* extract(Index_ i, Value_* buffer, const ExtractType_& extract_value, Index_ extract_length, Workspace<accrow_>& work) const {
         // If there isn't any space for caching, we just extract directly.
-        if (work.num_chunks == 0) {
+        if (work.num_chunks_in_cache == 0) {
             return extract_without_cache(i, buffer, extract_value, extract_length, work);
         }
 
@@ -390,8 +392,8 @@ private:
 
         void set_oracle(std::unique_ptr<tatami::Oracle<Index_> > o) {
             auto chunk_mydim = parent->template get_target_chunk_dim<accrow_>();
-            size_t max_predictions = static_cast<size_t>(base.num_chunks) * chunk_mydim * 2; // double the cache size, basically.
-            base.futurist.reset(new OracleCache<accrow_>(std::move(o), max_predictions, base.num_chunks));
+            size_t max_predictions = static_cast<size_t>(base.num_chunks_in_cache) * chunk_mydim * 2; // double the cache size, basically.
+            base.futurist.reset(new OracleCache<accrow_>(std::move(o), max_predictions, base.num_chunks_in_cache));
             base.historian.reset();
         }
     };

@@ -5,7 +5,7 @@ include(FetchContent)
 FetchContent_Declare(
   tatami
   GIT_REPOSITORY https://github.com/tatami-inc/tatami
-  GIT_TAG ce677ad7fc170c8d81b0641a913d77f7418bc06f
+  GIT_TAG ce581970b1bbbec4e7a5b34eea411c429fac576d
 )
 
 FetchContent_MakeAvailable(tatami)
