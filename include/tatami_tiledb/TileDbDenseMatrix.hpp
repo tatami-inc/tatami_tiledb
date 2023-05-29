@@ -8,11 +8,34 @@
 #include <memory>
 #include <vector>
 
+/**
+ * @file TileDbDenseMatrix.hpp
+ * @brief TileDB-backed dense matrix.
+ */
+
 namespace tatami_tiledb {
 
+/**
+ * @brief TileDB-backed dense matrix.
+ *
+ * @tparam Value_ Numeric type of the matrix value.
+ * @tparam Index_ Integer type for the row/column indices.
+ * @tparam transpose_ Whether to transpose the on-disk data upon loading.
+ * By default, this is `false`, so the first dimension corresponds to rows and the second dimension corresponds to columns.
+ * If `true`, the first dimension corresponds to columns and the second dimension corresponds to rows.
+ *
+ * Numeric dense matrix stored in a 2-dimensional TileDB array.
+ * Chunks of data are loaded from file as needed by `tatami::Extractor` objects, with additional caching to avoid repeated reads from disk.
+ * The size of cached chunks is determined by the extent of the tiles in the TileDB array.
+ */
 template<typename Value_, typename Index_, bool transpose_ = false>
 class TileDbDenseMatrix : public tatami::VirtualDenseMatrix<Value_, Index_> {
 public:
+    /**
+     * @param uri File path (or some other appropriate location) of the TileDB array.
+     * @param attribute Name of the attribute containing the data of interest.
+     * @param cache_limit Size of the chunk cache in bytes.
+     */
     TileDbDenseMatrix(std::string uri, std::string attribute, size_t cache_limit = 100000000) : 
         location(std::move(uri)), 
         attr(std::move(attribute)), 
