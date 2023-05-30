@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "tatami_tiledb/TileDbDenseMatrix.hpp"
+#include "tatami_tiledb/make_TileDbMatrix.hpp"
 #include "tatami_test/tatami_test.hpp"
 #include "tatami_test/temp_file_path.hpp"
 
@@ -72,6 +73,9 @@ TEST_F(TileDbDenseUtilsTest, Basic) {
     EXPECT_EQ(mat.ncol(), NC);
     EXPECT_FALSE(mat.sparse());
     EXPECT_EQ(mat.sparse_proportion(), 0);
+
+    auto ptr = tatami_tiledb::make_TileDbMatrix<double, int>(fpath, name);
+    EXPECT_FALSE(ptr->sparse());
 }
 
 TEST_F(TileDbDenseUtilsTest, Preference) {

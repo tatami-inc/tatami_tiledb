@@ -1,5 +1,5 @@
-#ifndef TATAMI_TILEDB_DENSE_MATRIX_HPP
-#define TATAMI_TILEDB_DENSE_MATRIX_HPP
+#ifndef TATAMI_TILEDB_SPARSE_MATRIX_HPP
+#define TATAMI_TILEDB_SPARSE_MATRIX_HPP
 
 #include "tatami/tatami.hpp"
 #include <tiledb/tiledb>
@@ -36,13 +36,28 @@ public:
      * @param attribute Name of the attribute containing the data of interest.
      * @param cache_limit Size of the chunk cache in bytes.
      */
-    TileDbSparseMatrix(std::string uri, std::string attribute, size_t cache_limit = 100000000) : 
-        location(std::move(uri)), 
-        attr(std::move(attribute)), 
-        cache_size_in_elements(static_cast<double>(cache_limit) / (sizeof(Value_) + sizeof(Index_)))
-    {
+    TileDbSparseMatrix(std::string uri, std::string attribute, size_t cache_limit = 100000000) : location(std::move(uri)), attr(std::move(attribute)) {
         tiledb::Context ctx;
         tiledb::ArraySchema schema(ctx, location);
+        if (schema.array_type() != TILEDB_SPARSE) {
+            throw std::runtime_error("TileDB array should be sparse");
+        }
+        initialize(schema, cache_limit);
+    }
+
+    /**
+     * @cond
+     */
+    TileDbSparseMatrix(tiledb::ArraySchema& schema, std::string uri, std::string attribute, size_t cache_limit) : location(std::move(uri)), attr(std::move(attribute)) {
+        initialize(schema, cache_limit);
+    }
+    /**
+     * @endcond
+     */
+
+private:
+    void initialize(tiledb::ArraySchema& schema, size_t cache_limit) {
+        cache_size_in_elements = static_cast<double>(cache_limit) / (sizeof(Value_) + sizeof(Index_));
 
         if (!schema.has_attribute(attr)) {
             throw std::runtime_error("no attribute '" + attr + "' is present in the TileDB array at '" + location + "'");
