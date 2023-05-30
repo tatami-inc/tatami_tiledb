@@ -71,7 +71,7 @@ $(function() {
 
 <div id="nav-path" class="navpath">
   <ul>
-<li class="navelem"><b>tatami_tiledb</b></li><li class="navelem"><a class="el" href="classtatami__tiledb_1_1TileDbDenseMatrix.html">TileDbDenseMatrix</a></li>  </ul>
+<li class="navelem"><a class="el" href="namespacetatami__tiledb.html">tatami_tiledb</a></li><li class="navelem"><a class="el" href="classtatami__tiledb_1_1TileDbDenseMatrix.html">TileDbDenseMatrix</a></li>  </ul>
 </div>
 </div><!-- top -->
 <div class="header">
@@ -135,8 +135,10 @@ typedef Index_&#160;</td><td class="memItemRight" valign="bottom"><a class="elRe
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:ad595994fc81111c526ccd65fc21e50e0"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtatami__tiledb_1_1TileDbDenseMatrix.html#ad595994fc81111c526ccd65fc21e50e0">TileDbDenseMatrix</a> (std::string uri, std::string attribute, size_t cache_limit=100000000)</td></tr>
-<tr class="separator:ad595994fc81111c526ccd65fc21e50e0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6490c9a8d2a4740ba27056e9b93accf0"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtatami__tiledb_1_1TileDbDenseMatrix.html#a6490c9a8d2a4740ba27056e9b93accf0">TileDbDenseMatrix</a> (std::string uri, std::string attribute, const <a class="el" href="structtatami__tiledb_1_1TileDbOptions.html">TileDbOptions</a> &amp;options)</td></tr>
+<tr class="separator:a6490c9a8d2a4740ba27056e9b93accf0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a320af27404e12340609d394b7324be39"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtatami__tiledb_1_1TileDbDenseMatrix.html#a320af27404e12340609d394b7324be39">TileDbDenseMatrix</a> (std::string uri, std::string attribute)</td></tr>
+<tr class="separator:a320af27404e12340609d394b7324be39"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9fcd596dae264aef3375bb045ccb4e07"><td class="memItemLeft" align="right" valign="top">Index_&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtatami__tiledb_1_1TileDbDenseMatrix.html#a9fcd596dae264aef3375bb045ccb4e07">nrow</a> () const</td></tr>
 <tr class="separator:a9fcd596dae264aef3375bb045ccb4e07"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a45b782dc4a44d530c0b8d21139daed46"><td class="memItemLeft" align="right" valign="top">Index_&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtatami__tiledb_1_1TileDbDenseMatrix.html#a45b782dc4a44d530c0b8d21139daed46">ncol</a> () const</td></tr>
@@ -269,8 +271,8 @@ class tatami_tiledb::TileDbDenseMatrix&lt; Value_, Index_, transpose_ &gt;</div>
 </dl>
 <p>Numeric dense matrix stored in a 2-dimensional TileDB array. Chunks of data are loaded from file as needed by <code><a class="elRef" href="https://tatami-inc.github.io/tatami/namespacetatami.html#ae9f8db5316521603085577d977a6955f">tatami::Extractor</a></code> objects, with additional caching to avoid repeated reads from disk. The size of cached chunks is determined by the extent of the tiles in the TileDB array. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
-<a id="ad595994fc81111c526ccd65fc21e50e0" name="ad595994fc81111c526ccd65fc21e50e0"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad595994fc81111c526ccd65fc21e50e0">&#9670;&#160;</a></span>TileDbDenseMatrix()</h2>
+<a id="a6490c9a8d2a4740ba27056e9b93accf0" name="a6490c9a8d2a4740ba27056e9b93accf0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6490c9a8d2a4740ba27056e9b93accf0">&#9670;&#160;</a></span>TileDbDenseMatrix() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -295,8 +297,8 @@ template&lt;typename Value_ , typename Index_ , bool transpose_ = false&gt; </di
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">size_t&#160;</td>
-          <td class="paramname"><em>cache_limit</em> = <code>100000000</code>&#160;</td>
+          <td class="paramtype">const <a class="el" href="structtatami__tiledb_1_1TileDbOptions.html">TileDbOptions</a> &amp;&#160;</td>
+          <td class="paramname"><em>options</em>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -314,7 +316,52 @@ template&lt;typename Value_ , typename Index_ , bool transpose_ = false&gt; </di
   <table class="params">
     <tr><td class="paramname">uri</td><td>File path (or some other appropriate location) of the TileDB array. </td></tr>
     <tr><td class="paramname">attribute</td><td>Name of the attribute containing the data of interest. </td></tr>
-    <tr><td class="paramname">cache_limit</td><td>Size of the chunk cache in bytes. </td></tr>
+    <tr><td class="paramname">options</td><td>Further options. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="a320af27404e12340609d394b7324be39" name="a320af27404e12340609d394b7324be39"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a320af27404e12340609d394b7324be39">&#9670;&#160;</a></span>TileDbDenseMatrix() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;typename Value_ , typename Index_ , bool transpose_ = false&gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classtatami__tiledb_1_1TileDbDenseMatrix.html">tatami_tiledb::TileDbDenseMatrix</a>&lt; Value_, Index_, transpose_ &gt;::TileDbDenseMatrix </td>
+          <td>(</td>
+          <td class="paramtype">std::string&#160;</td>
+          <td class="paramname"><em>uri</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::string&#160;</td>
+          <td class="paramname"><em>attribute</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">uri</td><td>File path (or some other appropriate location) of the TileDB array. </td></tr>
+    <tr><td class="paramname">attribute</td><td>Name of the attribute containing the data of interest. </td></tr>
   </table>
   </dd>
 </dl>

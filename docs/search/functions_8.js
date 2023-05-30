@@ -10,5 +10,5 @@ var searchData=
   ['make_5fdelayedsubsetblock_7',['make_DelayedSubsetBlock',['https://tatami-inc.github.io/tatami/namespacetatami.html#a8f4aafc0a1fbdc0c31bc122d24122a63',1,'tatami']]],
   ['make_5fdelayedsubtractvectorhelper_8',['make_DelayedSubtractVectorHelper',['https://tatami-inc.github.io/tatami/namespacetatami.html#abb68a8d27e821f213965edab7f029c48',1,'tatami']]],
   ['make_5fdelayedtranspose_9',['make_DelayedTranspose',['https://tatami-inc.github.io/tatami/namespacetatami.html#afa35d8e9fe286967f327ec0eb6bd5005',1,'tatami']]],
-  ['make_5ftiledbmatrix_10',['make_TileDbMatrix',['../make__TileDbMatrix_8hpp.html#aac6b49954401d32715871f7502b1f7b8',1,'tatami_tiledb']]]
+  ['make_5ftiledbmatrix_10',['make_TileDbMatrix',['../namespacetatami__tiledb.html#a956c942c27f3c33e0a134d0b98a868c8',1,'tatami_tiledb::make_TileDbMatrix(std::string uri, std::string attribute, const TileDbOptions &amp;options)'],['../namespacetatami__tiledb.html#aec5503d305a2770e006d02b2fe3c6175',1,'tatami_tiledb::make_TileDbMatrix(std::string uri, std::string attribute)']]]
 ];
