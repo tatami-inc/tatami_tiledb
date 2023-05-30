@@ -11,7 +11,8 @@ FetchContent_MakeAvailable(googletest)
 enable_testing()
 
 add_executable(libtest
-    src/TileDbDenseMatrix.cpp)
+    src/TileDbDenseMatrix.cpp
+    src/TileDbSparseMatrix.cpp)
 
 find_package(TileDB PATHS lib)
 
