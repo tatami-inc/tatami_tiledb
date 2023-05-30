@@ -27,21 +27,26 @@ namespace tatami_tiledb {
  * For dense on-disk arrays, a `TileDbDenseMatrix` is constructed; otherwise a `TileDbSparseMatrix` is returned.
  */
 template<typename Value_, typename Index_, bool transpose_ = false>
-std::shared_ptr<tatami::Matrix<Value_, Index_> > make_TileDbMatrix(std::string uri, std::string attribute, size_t cache_limit = 100000000) {
+std::shared_ptr<tatami::Matrix<Value_, Index_> > make_TileDbMatrix(std::string uri, std::string attribute, const TileDbOptions& options) {
     tiledb::Context ctx;
     tiledb::ArraySchema schema(ctx, uri);
 
     std::shared_ptr<tatami::Matrix<Value_, Index_> > output;
     auto atype = schema.array_type();
     if (atype == TILEDB_SPARSE) {
-        output.reset(new TileDbSparseMatrix<Value_, Index_, transpose_>(schema, std::move(uri), std::move(attribute), cache_limit));
+        output.reset(new TileDbSparseMatrix<Value_, Index_, transpose_>(schema, std::move(uri), std::move(attribute), options));
     } else if (atype == TILEDB_DENSE) {
-        output.reset(new TileDbDenseMatrix<Value_, Index_, transpose_>(schema, std::move(uri), std::move(attribute), cache_limit));
+        output.reset(new TileDbDenseMatrix<Value_, Index_, transpose_>(schema, std::move(uri), std::move(attribute), options));
     } else {
         throw std::runtime_error("unknown TileDB array type that is neither dense nor sparse");
     }
 
     return output; 
+}
+
+template<typename Value_, typename Index_, bool transpose_ = false>
+std::shared_ptr<tatami::Matrix<Value_, Index_> > make_TileDbMatrix(std::string uri, std::string attribute) {
+    return make_TileDbMatrix<Value_, Index_, transpose_>(std::move(uri), std::move(attribute), TileDbOptions());
 }
 
 }

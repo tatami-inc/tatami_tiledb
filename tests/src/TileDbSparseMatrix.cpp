@@ -9,16 +9,22 @@ public:
     static constexpr size_t NR = 200, NC = 100;
 
 protected:
-    // Make sure the cache size is smaller than the dataset, but not too much
-    // smaller, to make sure we do some caching + evictions. Here, the cache is
-    // set at 20% of the size of the entire dataset, i.e., 40 rows or 20 columns.
-    static constexpr size_t global_cache_size = (NR * NC * 8) / 5;
-
     std::vector<double> values;
     std::string fpath;
     std::string name;
 
     tatami_test::CompressedSparseDetails<double> contents;
+
+    static auto custom_options() {
+        tatami_tiledb::TileDbOptions custom_opt;
+
+        // Make sure the cache size is smaller than the dataset, but not too much
+        // smaller, to make sure we do some caching + evictions. Here, the cache is
+        // set at 20% of the size of the entire dataset, i.e., 40 rows or 20 columns.
+        custom_opt.cache_size = (NR * NC * (sizeof(double) + sizeof(int))) / 5;
+
+        return custom_opt;
+    }
 
     void dump(const std::pair<int, int>& tile_sizes) {
         fpath = tatami_test::temp_file_path("tatami-sparse-test");
@@ -95,6 +101,7 @@ TEST_F(TileDbSparseUtilsTest, Basic) {
 TEST_F(TileDbSparseUtilsTest, Preference) {
     {
         dump(std::make_pair<int, int>(10, 10));
+
         tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name);
         EXPECT_TRUE(mat.prefer_rows());
         EXPECT_EQ(mat.prefer_rows_proportion(), 1);
@@ -107,30 +114,22 @@ TEST_F(TileDbSparseUtilsTest, Preference) {
     {
         // First dimension is compromised, switching to the second dimension.
         dump(std::make_pair<int, int>(NR, 1));
-        tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, NR * sizeof(double));
+
+        tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name);
         EXPECT_FALSE(mat.prefer_rows());
 
-        tatami_tiledb::TileDbSparseMatrix<double, int, true> tmat(fpath, name, NR * sizeof(double));
+        tatami_tiledb::TileDbSparseMatrix<double, int, true> tmat(fpath, name);
         EXPECT_TRUE(tmat.prefer_rows());
     }
 
     {
         // Second dimension is compromised, but we just use the first anyway.
         dump(std::make_pair<int, int>(1, NC));
-        tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, NC * sizeof(double));
+
+        tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name);
         EXPECT_TRUE(mat.prefer_rows());
 
-        tatami_tiledb::TileDbSparseMatrix<double, int, true> tmat(fpath, name, NC * sizeof(double));
-        EXPECT_FALSE(tmat.prefer_rows());
-    }
-
-    {
-        // Both are compromised.
-        dump(std::make_pair<int, int>(10, 10));
-        tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, 0);
-        EXPECT_TRUE(mat.prefer_rows());
-
-        tatami_tiledb::TileDbSparseMatrix<double, int, true> tmat(fpath, name, 0);
+        tatami_tiledb::TileDbSparseMatrix<double, int, true> tmat(fpath, name);
         EXPECT_FALSE(tmat.prefer_rows());
     }
 }
@@ -138,7 +137,15 @@ TEST_F(TileDbSparseUtilsTest, Preference) {
 /*************************************
  *************************************/
 
-class TileDbSparseAccessUncachedTest : public ::testing::TestWithParam<std::tuple<int, bool> >, public TileDbSparseMatrixTestMethods {};
+class TileDbSparseAccessUncachedTest : public ::testing::TestWithParam<std::tuple<int, bool> >, public TileDbSparseMatrixTestMethods {
+protected:
+    static auto create_uncached_options() {
+        tatami_tiledb::TileDbOptions opt;
+        opt.require_minimum_cache = false;
+        opt.cache_size = 0;
+        return opt;
+    }
+};
 
 TEST_P(TileDbSparseAccessUncachedTest, Basic) {
     auto param = GetParam();
@@ -147,7 +154,7 @@ TEST_P(TileDbSparseAccessUncachedTest, Basic) {
 
     dump(std::pair<int, int>(10, 10)); // exact chunk choice doesn't matter here.
 
-    tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, 0);
+    tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, create_uncached_options());
     tatami::CompressedSparseRowMatrix<double, int> ref(NR, NC, contents.value, contents.index, contents.ptr);
 
     tatami_test::test_simple_column_access(&mat, &ref, FORWARD, JUMP);
@@ -161,9 +168,27 @@ TEST_P(TileDbSparseAccessUncachedTest, Transposed) {
 
     dump(std::pair<int, int>(10, 10)); // exact chunk choice doesn't matter here.
 
-    tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, 0);
+    tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, create_uncached_options());
     std::shared_ptr<tatami::Matrix<double, int> > ptr(new tatami::CompressedSparseRowMatrix<double, int>(NR, NC, contents.value, contents.index, contents.ptr));
     tatami::DelayedTranspose<double, int> ref(std::move(ptr));
+
+    tatami_test::test_simple_column_access(&mat, &ref, FORWARD, JUMP);
+    tatami_test::test_simple_row_access(&mat, &ref, FORWARD, JUMP);
+}
+
+TEST_P(TileDbSparseAccessUncachedTest, ForcedCache) {
+    auto param = GetParam();
+    bool FORWARD = std::get<0>(param);
+    size_t JUMP = std::get<1>(param);
+
+    dump(std::pair<int, int>(10, 10)); 
+
+    tatami_tiledb::TileDbOptions opt;
+    opt.require_minimum_cache = true; // Force a minimum cache.
+    opt.cache_size = 0;
+
+    tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, opt);
+    tatami::CompressedSparseRowMatrix<double, int> ref(NR, NC, contents.value, contents.index, contents.ptr);
 
     tatami_test::test_simple_column_access(&mat, &ref, FORWARD, JUMP);
     tatami_test::test_simple_row_access(&mat, &ref, FORWARD, JUMP);
@@ -191,7 +216,7 @@ TEST_P(TileDbSparseAccessTest, Basic) {
     auto chunk_sizes = std::get<2>(param);
     dump(chunk_sizes);
 
-    tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, global_cache_size);
+    tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, custom_options());
     tatami::CompressedSparseRowMatrix<double, int> ref(NR, NC, contents.value, contents.index, contents.ptr);
 
     tatami_test::test_simple_column_access(&mat, &ref, FORWARD, JUMP);
@@ -206,7 +231,7 @@ TEST_P(TileDbSparseAccessTest, Transposed) {
     auto chunk_sizes = std::get<2>(param);
     dump(chunk_sizes);
 
-    tatami_tiledb::TileDbSparseMatrix<double, int, true> mat(fpath, name, global_cache_size);
+    tatami_tiledb::TileDbSparseMatrix<double, int, true> mat(fpath, name, custom_options());
     std::shared_ptr<tatami::Matrix<double, int> > ptr(new tatami::CompressedSparseRowMatrix<double, int>(NR, NC, contents.value, contents.index, contents.ptr));
     tatami::DelayedTranspose<double, int> ref(std::move(ptr));
 
@@ -239,7 +264,7 @@ TEST_P(TileDbSparseAccessMiscTest, Apply) {
     auto chunk_sizes = std::get<0>(param);
     dump(chunk_sizes);
 
-    tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, global_cache_size);
+    tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, custom_options());
     tatami::CompressedSparseRowMatrix<double, int> ref(NR, NC, contents.value, contents.index, contents.ptr);
 
     EXPECT_EQ(tatami::row_sums(&mat), tatami::row_sums(&ref));
@@ -253,7 +278,7 @@ TEST_P(TileDbSparseAccessMiscTest, LruReuse) {
     auto chunk_sizes = std::get<0>(param);
     dump(chunk_sizes);
 
-    tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, global_cache_size);
+    tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, custom_options());
     tatami::CompressedSparseRowMatrix<double, int> ref(NR, NC, contents.value, contents.index, contents.ptr);
 
     {
@@ -280,7 +305,7 @@ TEST_P(TileDbSparseAccessMiscTest, Oracle) {
     auto chunk_sizes = std::get<0>(param);
     dump(chunk_sizes);
 
-    tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, global_cache_size);
+    tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, custom_options());
     tatami::CompressedSparseRowMatrix<double, int> ref(NR, NC, contents.value, contents.index, contents.ptr);
 
     tatami_test::test_oracle_row_access<tatami::NumericMatrix>(&mat, &ref, false); // consecutive
@@ -316,7 +341,7 @@ TEST_P(TileDbSparseSlicedTest, Basic) {
     auto chunk_sizes = std::get<3>(param);
     dump(chunk_sizes);
 
-    tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, global_cache_size);
+    tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, custom_options());
     tatami::CompressedSparseRowMatrix<double, int> ref(NR, NC, contents.value, contents.index, contents.ptr);
 
     {
@@ -339,7 +364,7 @@ TEST_P(TileDbSparseSlicedTest, Transposed) {
     auto chunk_sizes = std::get<3>(param);
     dump(chunk_sizes);
 
-    tatami_tiledb::TileDbSparseMatrix<double, int, true> mat(fpath, name, global_cache_size);
+    tatami_tiledb::TileDbSparseMatrix<double, int, true> mat(fpath, name, custom_options());
     std::shared_ptr<tatami::Matrix<double, int> > ptr(new tatami::CompressedSparseRowMatrix<double, int>(NR, NC, contents.value, contents.index, contents.ptr));
     tatami::DelayedTranspose<double, int> ref(std::move(ptr));
 
@@ -387,7 +412,7 @@ TEST_P(TileDbSparseIndexedTest, Basic) {
     auto chunk_sizes = std::get<3>(param);
     dump(chunk_sizes);
 
-    tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, global_cache_size);
+    tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, custom_options());
     tatami::CompressedSparseRowMatrix<double, int> ref(NR, NC, contents.value, contents.index, contents.ptr);
 
     {
@@ -410,7 +435,7 @@ TEST_P(TileDbSparseIndexedTest, Transposed) {
     auto chunk_sizes = std::get<3>(param);
     dump(chunk_sizes);
 
-    tatami_tiledb::TileDbSparseMatrix<double, int, true> mat(fpath, name, global_cache_size);
+    tatami_tiledb::TileDbSparseMatrix<double, int, true> mat(fpath, name, custom_options());
     std::shared_ptr<tatami::Matrix<double, int> > ptr(new tatami::CompressedSparseRowMatrix<double, int>(NR, NC, contents.value, contents.index, contents.ptr));
     tatami::DelayedTranspose<double, int> ref(std::move(ptr));
 

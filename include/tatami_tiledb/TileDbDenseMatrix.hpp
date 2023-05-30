@@ -2,6 +2,7 @@
 #define TATAMI_TILEDB_DENSE_MATRIX_HPP
 
 #include "tatami/tatami.hpp"
+#include "TileDbOptions.hpp"
 #include <tiledb/tiledb>
 
 #include <string>
@@ -34,30 +35,37 @@ public:
     /**
      * @param uri File path (or some other appropriate location) of the TileDB array.
      * @param attribute Name of the attribute containing the data of interest.
-     * @param cache_limit Size of the chunk cache in bytes.
+     * @param options Further options.
      */
-    TileDbDenseMatrix(std::string uri, std::string attribute, size_t cache_limit = 100000000) : location(std::move(uri)), attr(std::move(attribute)) {
+    TileDbDenseMatrix(std::string uri, std::string attribute, const TileDbOptions& options) : location(std::move(uri)), attr(std::move(attribute)) {
         tiledb::Context ctx;
         tiledb::ArraySchema schema(ctx, location);
         if (schema.array_type() != TILEDB_DENSE) {
             throw std::runtime_error("TileDB array should be dense");
         }
-        initialize(schema, cache_limit);
+        initialize(schema, options);
     }
+
+    /**
+     * @param uri File path (or some other appropriate location) of the TileDB array.
+     * @param attribute Name of the attribute containing the data of interest.
+     */
+    TileDbDenseMatrix(std::string uri, std::string attribute) : TileDbDenseMatrix(std::move(uri), std::move(attribute), TileDbOptions()) {}
 
     /**
      * @cond
      */
-    TileDbDenseMatrix(tiledb::ArraySchema& schema, std::string uri, std::string attribute, size_t cache_limit) : location(std::move(uri)), attr(std::move(attribute)) {
-        initialize(schema, cache_limit);
+    TileDbDenseMatrix(tiledb::ArraySchema& schema, std::string uri, std::string attribute, const TileDbOptions& options) : location(std::move(uri)), attr(std::move(attribute)) {
+        initialize(schema, options);
     }
     /**
      * @endcond
      */
 
 private:
-    void initialize(tiledb::ArraySchema& schema, size_t cache_limit) {
-        cache_size_in_elements = static_cast<double>(cache_limit) / sizeof(Value_);
+    void initialize(tiledb::ArraySchema& schema, const TileDbOptions& options) {
+        cache_size_in_elements = static_cast<double>(options.cache_size) / sizeof(Value_);
+        require_minimum_cache = options.require_minimum_cache;
 
         if (!schema.has_attribute(attr)) {
             throw std::runtime_error("no attribute '" + attr + "' is present in the TileDB array at '" + location + "'");
@@ -96,6 +104,7 @@ private:
 private:
     std::string location, attr;
     size_t cache_size_in_elements;
+    bool require_minimum_cache;
 
     int first_offset, second_offset;
     Index_ first_dim, second_dim;
@@ -184,6 +193,11 @@ public:
             auto chunk_dim = parent->template get_target_chunk_dim<accrow_>();
             chunk_size_in_elements = static_cast<size_t>(chunk_dim) * static_cast<size_t>(other_dim);
             num_chunks_in_cache = static_cast<double>(parent->cache_size_in_elements) / chunk_size_in_elements;
+
+            // Mandate a minimum number of caches.
+            if (parent->require_minimum_cache && num_chunks_in_cache == 0) {
+                num_chunks_in_cache = 1;
+            }
 
             // Only set up the LRU cache if there is a non-zero number of chunks.
             if (num_chunks_in_cache > 0) {
