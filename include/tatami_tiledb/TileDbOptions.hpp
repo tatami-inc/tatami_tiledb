@@ -21,11 +21,12 @@ struct TileDbOptions {
      * Larger caches improve access speed at the cost of memory usage.
      * Small values may be ignored if `require_minimum_cache` is `true`.
      */
-    size_t cache_size = 100000000;
+    size_t maximum_cache_size = 100000000;
 
     /**
-     * Whether to automatically enforce a minimum size for the cache, regardless of `cache_size`.
-     * This minimum is chosen to ensure that the same tiles are not read repeatedly when iterating over consecutive rows/columns of the matrix.
+     * Whether to automatically enforce a minimum size for the cache, regardless of `maximum_cache_size`.
+     * This minimum is chosen to ensure that all tiles overlapping one row (or a slice/subset thereof) can be retained in memory,
+     * so that the same tiles are not repeatedly re-read from disk when iterating over consecutive rows/columns of the matrix.
      */
     bool require_minimum_cache = true;
 };

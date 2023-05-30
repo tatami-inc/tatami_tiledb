@@ -2,8 +2,9 @@
 #define TATAMI_TILEDB_SPARSE_MATRIX_HPP
 
 #include "tatami/tatami.hpp"
-#include "TileDbOptions.hpp"
 #include <tiledb/tiledb>
+
+#include "TileDbOptions.hpp"
 
 #include <string>
 #include <memory>
@@ -64,7 +65,7 @@ public:
 
 private:
     void initialize(tiledb::ArraySchema& schema, const TileDbOptions& options) {
-        cache_size_in_elements = static_cast<double>(options.cache_size) / (sizeof(Value_) + sizeof(Index_));
+        cache_size_in_elements = static_cast<double>(options.maximum_cache_size) / (sizeof(Value_) + sizeof(Index_));
         require_minimum_cache = options.require_minimum_cache;
 
         if (!schema.has_attribute(attr)) {

@@ -20,7 +20,7 @@ protected:
         // Make sure the cache size is smaller than the dataset, but not too much
         // smaller, to make sure we do some caching + evictions. Here, the cache is
         // set at 20% of the size of the entire dataset, i.e., 40 rows or 20 columns.
-        custom_opt.cache_size = (NR * NC * (sizeof(double) + sizeof(int))) / 5;
+        custom_opt.maximum_cache_size = (NR * NC * (sizeof(double) + sizeof(int))) / 5;
 
         return custom_opt;
     }
@@ -165,7 +165,7 @@ protected:
     static auto create_uncached_options() {
         tatami_tiledb::TileDbOptions opt;
         opt.require_minimum_cache = false;
-        opt.cache_size = 0;
+        opt.maximum_cache_size = 0;
         return opt;
     }
 };
@@ -208,7 +208,7 @@ TEST_P(TileDbSparseAccessUncachedTest, ForcedCache) {
 
     tatami_tiledb::TileDbOptions opt;
     opt.require_minimum_cache = true; // Force a minimum cache.
-    opt.cache_size = 0;
+    opt.maximum_cache_size = 0;
 
     tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, opt);
     tatami::CompressedSparseRowMatrix<double, int> ref(NR, NC, contents.value, contents.index, contents.ptr);

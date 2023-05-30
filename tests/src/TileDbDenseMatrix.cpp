@@ -18,7 +18,7 @@ protected:
         // Make sure the cache size is smaller than the dataset, but not too much
         // smaller, to make sure we do some caching + evictions. Here, the cache is
         // set at 20% of the size of the entire dataset, i.e., 40 rows or 20 columns.
-        custom_opt.cache_size = (NR * NC * sizeof(double)) / 5;
+        custom_opt.maximum_cache_size = (NR * NC * sizeof(double)) / 5;
 
         return custom_opt;
     }
@@ -132,7 +132,15 @@ TEST_F(TileDbDenseUtilsTest, Preference) {
 /*************************************
  *************************************/
 
-class TileDbDenseAccessUncachedTest : public ::testing::TestWithParam<std::tuple<int, bool> >, public TileDbDenseMatrixTestMethods {};
+class TileDbDenseAccessUncachedTest : public ::testing::TestWithParam<std::tuple<int, bool> >, public TileDbDenseMatrixTestMethods {
+protected:
+    static auto create_uncached_options() {
+        tatami_tiledb::TileDbOptions opt;
+        opt.require_minimum_cache = false;
+        opt.maximum_cache_size = 0;
+        return opt;
+    }
+};
 
 TEST_P(TileDbDenseAccessUncachedTest, Basic) {
     auto param = GetParam();
@@ -141,11 +149,7 @@ TEST_P(TileDbDenseAccessUncachedTest, Basic) {
 
     dump(std::pair<int, int>(10, 10)); // exact chunk choice doesn't matter here.
 
-    tatami_tiledb::TileDbOptions opt;
-    opt.require_minimum_cache = false;
-    opt.cache_size = 0;
-
-    tatami_tiledb::TileDbDenseMatrix<double, int> mat(fpath, name, opt);
+    tatami_tiledb::TileDbDenseMatrix<double, int> mat(fpath, name, create_uncached_options());
     tatami::DenseRowMatrix<double, int> ref(NR, NC, values);
 
     tatami_test::test_simple_column_access(&mat, &ref, FORWARD, JUMP);
@@ -159,11 +163,7 @@ TEST_P(TileDbDenseAccessUncachedTest, Transposed) {
 
     dump(std::pair<int, int>(10, 10)); // exact chunk choice doesn't matter here.
 
-    tatami_tiledb::TileDbOptions opt;
-    opt.require_minimum_cache = false;
-    opt.cache_size = 0;
-
-    tatami_tiledb::TileDbDenseMatrix<double, int, true> mat(fpath, name, opt);
+    tatami_tiledb::TileDbDenseMatrix<double, int, true> mat(fpath, name, create_uncached_options());
     std::shared_ptr<tatami::Matrix<double, int> > ptr(new tatami::DenseRowMatrix<double, int>(NR, NC, values));
     tatami::DelayedTranspose<double, int> ref(std::move(ptr));
 
@@ -180,7 +180,7 @@ TEST_P(TileDbDenseAccessUncachedTest, ForcedCache) {
 
     tatami_tiledb::TileDbOptions opt;
     opt.require_minimum_cache = true; // Force a minimum cache.
-    opt.cache_size = 0;
+    opt.maximum_cache_size = 0;
 
     tatami_tiledb::TileDbDenseMatrix<double, int> mat(fpath, name, opt);
     tatami::DenseRowMatrix<double, int> ref(NR, NC, values);
