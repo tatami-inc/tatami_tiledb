@@ -1,6 +1,5 @@
 #include <gtest/gtest.h>
-#include "tatami_tiledb/TileDbDenseMatrix.hpp"
-#include "tatami_tiledb/make_TileDbMatrix.hpp"
+#include "tatami_tiledb/tatami_tiledb.hpp"
 #include "tatami_test/tatami_test.hpp"
 #include "tatami_test/temp_file_path.hpp"
 
@@ -82,6 +81,16 @@ TEST_F(TileDbDenseUtilsTest, Basic) {
 
     auto ptr = tatami_tiledb::make_TileDbMatrix<double, int>(fpath, name);
     EXPECT_FALSE(ptr->sparse());
+
+    bool failed = false;
+    try {
+        tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name);
+    } catch (std::exception& e) {
+        std::string msg(e.what());
+        EXPECT_TRUE(msg.find("sparse") != std::string::npos);
+        failed = true;
+    }
+    EXPECT_TRUE(failed);
 }
 
 TEST_F(TileDbDenseUtilsTest, Preference) {
@@ -138,6 +147,25 @@ TEST_P(TileDbDenseAccessUncachedTest, Basic) {
 
     tatami_tiledb::TileDbDenseMatrix<double, int> mat(fpath, name, opt);
     tatami::DenseRowMatrix<double, int> ref(NR, NC, values);
+
+    tatami_test::test_simple_column_access(&mat, &ref, FORWARD, JUMP);
+    tatami_test::test_simple_row_access(&mat, &ref, FORWARD, JUMP);
+}
+
+TEST_P(TileDbDenseAccessUncachedTest, Transposed) {
+    auto param = GetParam();
+    bool FORWARD = std::get<0>(param);
+    size_t JUMP = std::get<1>(param);
+
+    dump(std::pair<int, int>(10, 10)); // exact chunk choice doesn't matter here.
+
+    tatami_tiledb::TileDbOptions opt;
+    opt.require_minimum_cache = false;
+    opt.cache_size = 0;
+
+    tatami_tiledb::TileDbDenseMatrix<double, int, true> mat(fpath, name, opt);
+    std::shared_ptr<tatami::Matrix<double, int> > ptr(new tatami::DenseRowMatrix<double, int>(NR, NC, values));
+    tatami::DelayedTranspose<double, int> ref(std::move(ptr));
 
     tatami_test::test_simple_column_access(&mat, &ref, FORWARD, JUMP);
     tatami_test::test_simple_row_access(&mat, &ref, FORWARD, JUMP);

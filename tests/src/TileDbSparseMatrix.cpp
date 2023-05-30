@@ -1,6 +1,5 @@
 #include <gtest/gtest.h>
-#include "tatami_tiledb/TileDbSparseMatrix.hpp"
-#include "tatami_tiledb/make_TileDbMatrix.hpp"
+#include "tatami_tiledb/tatami_tiledb.hpp"
 #include "tatami_test/tatami_test.hpp"
 #include "tatami_test/temp_file_path.hpp"
 
@@ -98,6 +97,30 @@ TEST_F(TileDbSparseUtilsTest, Basic) {
     EXPECT_TRUE(ptr->sparse());
 }
 
+TEST_F(TileDbSparseUtilsTest, Errors) {
+    dump(std::make_pair<int, int>(10, 10));
+
+    bool failed = false;
+    try {
+        tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, "WHEE");
+    } catch (std::exception& e) {
+        std::string msg(e.what());
+        EXPECT_TRUE(msg.find("no attribute 'WHEE'") != std::string::npos);
+        failed = true;
+    }
+    EXPECT_TRUE(failed);
+
+    failed = false;
+    try {
+        tatami_tiledb::TileDbDenseMatrix<double, int> mat(fpath, name);
+    } catch (std::exception& e) {
+        std::string msg(e.what());
+        EXPECT_TRUE(msg.find("dense") != std::string::npos);
+        failed = true;
+    }
+    EXPECT_TRUE(failed);
+}
+
 TEST_F(TileDbSparseUtilsTest, Preference) {
     {
         dump(std::make_pair<int, int>(10, 10));
@@ -168,7 +191,7 @@ TEST_P(TileDbSparseAccessUncachedTest, Transposed) {
 
     dump(std::pair<int, int>(10, 10)); // exact chunk choice doesn't matter here.
 
-    tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, create_uncached_options());
+    tatami_tiledb::TileDbSparseMatrix<double, int, true> mat(fpath, name, create_uncached_options());
     std::shared_ptr<tatami::Matrix<double, int> > ptr(new tatami::CompressedSparseRowMatrix<double, int>(NR, NC, contents.value, contents.index, contents.ptr));
     tatami::DelayedTranspose<double, int> ref(std::move(ptr));
 
