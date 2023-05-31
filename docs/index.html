@@ -75,7 +75,10 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 <div class="textblock"><p><a class="anchor" id="md__2github_2workspace_2README"></a> <img src="https://github.com/tatami-inc/tatami_tiledb/actions/workflows/run-tests.yaml/badge.svg" alt="Unit tests" style="pointer-events: none;" class="inline"/> <img src="https://github.com/tatami-inc/tatami_tiledb/actions/workflows/doxygenate.yaml/badge.svg" alt="Documentation" style="pointer-events: none;" class="inline"/> <a href="https://codecov.io/gh/tatami-inc/tatami_tiledb"><img src="https://codecov.io/gh/tatami-inc/tatami_tiledb/branch/master/graph/badge.svg?token=Z189ORCLLR" alt="Codecov" style="pointer-events: none;" class="inline"/></a></p>
-<p>This repository implements <a href="https://github.com/tatami-inc/tatami"><b>tatami</b></a> bindings for <a href="https://github.com/tiledb-inc/tiledb">TileDB</a>-backed matrices, allowing random access without loading the entire dataset into memory. Any matrices stored as 2-dimensional TileDB datasets can be represented as a <code><a class="elRef" href="https://tatami-inc.github.io/tatami/classtatami_1_1Matrix.html">tatami::Matrix</a></code>:</p>
+<h1>Overview</h1>
+<p>This repository implements <a href="https://github.com/tatami-inc/tatami"><b>tatami</b></a> bindings for <a href="https://github.com/tiledb-inc/tiledb">TileDB</a>-backed matrices, allowing random access without loading the entire dataset into memory. Any matrix stored as a 2-dimensional TileDB array (dense or sparse) can be represented as a <code><a class="elRef" href="https://tatami-inc.github.io/tatami/classtatami_1_1Matrix.html">tatami::Matrix</a></code> and consumed by <b>tatami</b>-compatible applications.</p>
+<h1>Quick start</h1>
+<p><b><a class="el" href="namespacetatami__tiledb.html" title="tatami bindings for TileDB matrices.">tatami_tiledb</a></b> is a header-only library, so it can be easily used by just <code>#include</code>ing the relevant source files:</p>
 <div class="fragment"><div class="line"><span class="preprocessor">#include &quot;<a class="code" href="tatami__tiledb_8hpp.html">tatami_tiledb/tatami_tiledb.hpp</a>&quot;</span></div>
 <div class="line"> </div>
 <div class="line"><a class="code hl_class" href="classtatami__tiledb_1_1TileDbDenseMatrix.html">tatami_tiledb::TileDbDenseMatrix&lt;double, int&gt;</a> dense_mat(<span class="stringliteral">&quot;some_dir&quot;</span>, <span class="stringliteral">&quot;attr_name&quot;</span>);</div>
@@ -95,7 +98,28 @@ $(function() {
 <div class="ttc" id="astructtatami__tiledb_1_1TileDbOptions_html"><div class="ttname"><a href="structtatami__tiledb_1_1TileDbOptions.html">tatami_tiledb::TileDbOptions</a></div><div class="ttdoc">Options for TileDB extraction.</div><div class="ttdef"><b>Definition</b> TileDbOptions.hpp:14</div></div>
 <div class="ttc" id="astructtatami__tiledb_1_1TileDbOptions_html_a318b648466b3dd661475bd672fbc1211"><div class="ttname"><a href="structtatami__tiledb_1_1TileDbOptions.html#a318b648466b3dd661475bd672fbc1211">tatami_tiledb::TileDbOptions::maximum_cache_size</a></div><div class="ttdeci">size_t maximum_cache_size</div><div class="ttdef"><b>Definition</b> TileDbOptions.hpp:24</div></div>
 <div class="ttc" id="astructtatami__tiledb_1_1TileDbOptions_html_a8fec7a4cd15cace444af6c3fb3c9f7da"><div class="ttname"><a href="structtatami__tiledb_1_1TileDbOptions.html#a8fec7a4cd15cace444af6c3fb3c9f7da">tatami_tiledb::TileDbOptions::require_minimum_cache</a></div><div class="ttdeci">bool require_minimum_cache</div><div class="ttdef"><b>Definition</b> TileDbOptions.hpp:31</div></div>
-</div><!-- fragment --><p>Check out the <a href="https://tatami-inc.github.io/tatami_tiledb">reference documentation</a> for more details. </p>
+</div><!-- fragment --><p>Check out the <a href="https://tatami-inc.github.io/tatami_tiledb">reference documentation</a> for more details.</p>
+<h1>Building projects</h1>
+<p>If you're using CMake, you just need to add something like this to your <code>CMakeLists.txt</code>:</p>
+<div class="fragment"><div class="line">include(FetchContent)</div>
+<div class="line"> </div>
+<div class="line">FetchContent_Declare(</div>
+<div class="line">  tatami</div>
+<div class="line">  GIT_REPOSITORY https://github.com/tatami-inc/tatami_tiledb</div>
+<div class="line">  GIT_TAG master # or any version of interest</div>
+<div class="line">)</div>
+<div class="line"> </div>
+<div class="line">FetchContent_MakeAvailable(tatami_tiledb)</div>
+</div><!-- fragment --><p>Then you can link to <b><a class="el" href="namespacetatami__tiledb.html" title="tatami bindings for TileDB matrices.">tatami_tiledb</a></b> to make the headers available during compilation:</p>
+<div class="fragment"><div class="line"># For executables:</div>
+<div class="line">target_link_libraries(myexe tatami_tiledb)</div>
+<div class="line"> </div>
+<div class="line"># For libaries</div>
+<div class="line">target_link_libraries(mylib INTERFACE tatami_tiledb)</div>
+</div><!-- fragment --><p>You'll also need to link to the TileDB library yourself (version 2.15 or higher). <b><a class="el" href="namespacetatami__tiledb.html" title="tatami bindings for TileDB matrices.">tatami_tiledb</a></b> does not place any restrictions on the source of the TileDB library; in the simplest case, we just download the latest <a href="https://github.com/TileDB-Inc/TileDB/releases">release</a>, unpack it in some <code>tiledb/</code> directory, and link to it as shown below. (Proper installation instructions for TileDB can be found in their <a href="https://docs.tiledb.com/main/how-to/installation/pre-built-packages">documentation</a>.)</p>
+<div class="fragment"><div class="line">find_package(TileDB PATHS tiledb)</div>
+<div class="line">target_link_libraries(myexe TileDB::tiledb_shared)</div>
+</div><!-- fragment --><p>If you're not using CMake, the simple approach is to just copy the files - either directly or with Git submodules - and include their path during compilation with, e.g., GCC's <code>-I</code>. This will also require the core <a href="https://github.com/tatami-inc/tatami"><b>tatami</b></a> library. </p>
 </div></div><!-- PageDoc -->
 </div><!-- contents -->
 <!-- start footer part -->
