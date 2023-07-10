@@ -178,13 +178,13 @@ public:
     using tatami::Matrix<Value_, Index_>::sparse_column;
 
 public:
+    /*************************************************
+     * Defines the TileDB workspace and chunk cache. *
+     *************************************************/
+
     typedef std::vector<Value_> Chunk;
-
-    template<bool accrow_>
-    using OracleCache = tatami::OracleChunkCache<Index_, Index_, Chunk>; 
-
-    template<bool accrow_>
-    using LruCache = tatami::LruChunkCache<Index_, Chunk>;
+    typedef tatami::OracleChunkCache<Index_, Index_, Chunk> OracleCache;
+    typedef tatami::LruChunkCache<Index_, Chunk> LruCache;
 
     template<bool accrow_>
     struct Workspace {
@@ -195,14 +195,14 @@ public:
             chunk_size_in_elements = static_cast<size_t>(chunk_dim) * static_cast<size_t>(other_dim);
             num_chunks_in_cache = static_cast<double>(parent->cache_size_in_elements) / chunk_size_in_elements;
 
-            // Mandate a minimum number of caches.
+            // Mandate a minimum number of chunks.
             if (parent->require_minimum_cache && num_chunks_in_cache == 0) {
                 num_chunks_in_cache = 1;
             }
 
             // Only set up the LRU cache if there is a non-zero number of chunks.
             if (num_chunks_in_cache > 0) {
-                historian.reset(new LruCache<accrow_>(num_chunks_in_cache));
+                historian.reset(new LruCache(num_chunks_in_cache));
             }
         }
 
@@ -217,13 +217,17 @@ public:
         Index_ num_chunks_in_cache;
 
         // Cache with an oracle.
-        std::unique_ptr<OracleCache<accrow_> > futurist;
+        std::unique_ptr<OracleCache> futurist;
 
         // Cache without an oracle.
-        std::unique_ptr<LruCache<accrow_> > historian;
+        std::unique_ptr<LruCache> historian;
     };
 
 private:
+    /********************************
+     * Defines extraction functions *
+     ********************************/
+
     template<bool accrow_, typename ExtractType_>
     void extract_base(Index_ primary_start, Index_ primary_end, Value_* target, const ExtractType_& extract_value, Index_ extract_length, Workspace<accrow_>& work) const {
         tiledb::Subarray subarray(work.ctx, work.array);
@@ -258,13 +262,6 @@ private:
     }
 
     template<bool accrow_, typename ExtractType_>
-    void extract_chunk(Index_ chunk_id, Index_ dim, Index_ chunk_dim, Value_* target, const ExtractType_& extract_value, Index_ extract_length, Workspace<accrow_>& work) const {
-        Index_ chunk_start = chunk_id * chunk_dim;
-        Index_ chunk_end = std::min(dim, chunk_start + chunk_dim);
-        extract_base<accrow_>(chunk_start, chunk_end, target, extract_value, extract_length, work);
-    }
-
-    template<bool accrow_, typename ExtractType_>
     const Value_* extract_without_cache(Index_ i, Value_* buffer, const ExtractType_& extract_value, Index_ extract_length, Workspace<accrow_>& work) const {
 #ifndef TATAMI_TILEDB_PARALLEL_LOCK
         #pragma omp critical
@@ -281,6 +278,13 @@ private:
         });
 #endif
         return buffer;
+    }
+
+    template<bool accrow_, typename ExtractType_>
+    void extract_chunk(Index_ chunk_id, Index_ dim, Index_ chunk_dim, Value_* target, const ExtractType_& extract_value, Index_ extract_length, Workspace<accrow_>& work) const {
+        Index_ chunk_start = chunk_id * chunk_dim;
+        Index_ chunk_end = std::min(dim, chunk_start + chunk_dim);
+        extract_base<accrow_>(chunk_start, chunk_end, target, extract_value, extract_length, work);
     }
 
     template<bool accrow_, typename ExtractType_>
@@ -377,6 +381,10 @@ private:
     }
 
 private:
+    /*************************************
+     * Defines the extractors themselves *
+     *************************************/
+
     template<bool accrow_, tatami::DimensionSelectionType selection_>
     struct Extractor : public tatami::Extractor<selection_, false, Value_, Index_> {
         Extractor(const TileDbDenseMatrix* p) : parent(p), base(parent) {
@@ -431,7 +439,7 @@ private:
             if (base.num_chunks_in_cache > 0) {
                 auto chunk_mydim = parent->template get_target_chunk_dim<accrow_>();
                 size_t max_predictions = static_cast<size_t>(base.num_chunks_in_cache) * chunk_mydim * 2; // double the cache size, basically.
-                base.futurist.reset(new OracleCache<accrow_>(std::move(o), max_predictions, base.num_chunks_in_cache));
+                base.futurist.reset(new OracleCache(std::move(o), max_predictions, base.num_chunks_in_cache));
                 base.historian.reset();
             }
         }

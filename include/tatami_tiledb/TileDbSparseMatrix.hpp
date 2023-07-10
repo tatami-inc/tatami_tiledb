@@ -181,6 +181,10 @@ public:
     using tatami::Matrix<Value_, Index_>::sparse_column;
 
 public:
+    /*************************************************
+     * Defines the TileDB workspace and chunk cache. *
+     *************************************************/
+
     struct Chunk {
         Chunk() = default;
         Chunk(size_t nnz, size_t ne) : values(nnz), indices(nnz), indptrs(ne + 1) {}
@@ -196,11 +200,8 @@ public:
         }
     };
 
-    template<bool accrow_>
-    using OracleCache = tatami::OracleChunkCache<Index_, Index_, Chunk>; 
-
-    template<bool accrow_>
-    using LruCache = tatami::LruChunkCache<Index_, Chunk>;
+    typedef tatami::OracleChunkCache<Index_, Index_, Chunk> OracleCache;
+    typedef tatami::LruChunkCache<Index_, Chunk> LruCache;
 
     template<bool accrow_>
     struct Workspace {
@@ -218,7 +219,7 @@ public:
 
             // Only set up the LRU cache if there is a non-zero number of chunks.
             if (num_chunks_in_cache > 0) {
-                historian.reset(new LruCache<accrow_>(num_chunks_in_cache));
+                historian.reset(new LruCache(num_chunks_in_cache));
                 holding_coords.resize(chunk_size_in_elements);
             } else {
                 uncached.reset(new Chunk(other_dim, 1));
@@ -243,13 +244,17 @@ public:
         std::unique_ptr<Chunk> uncached;
 
         // Cache with an oracle.
-        std::unique_ptr<OracleCache<accrow_> > futurist;
+        std::unique_ptr<OracleCache> futurist;
 
         // Cache without an oracle.
-        std::unique_ptr<LruCache<accrow_> > historian;
+        std::unique_ptr<LruCache> historian;
     };
 
 private:
+    /********************************
+     * Defines extraction functions *
+     ********************************/
+
     template<bool accrow_, typename ExtractType_>
     void extract_base(Index_ primary_start, Index_ primary_end, Chunk& target, const ExtractType_& extract_value, Index_ extract_length, Workspace<accrow_>& work) const {
         tiledb::Subarray subarray(work.ctx, work.array);
@@ -497,6 +502,10 @@ private:
     }
 
 private:
+    /*************************************
+     * Defines the extractors themselves *
+     *************************************/
+
     template<bool accrow_, tatami::DimensionSelectionType selection_, bool sparse_>
     struct TileDbExtractor : public tatami::Extractor<selection_, sparse_, Value_, Index_> {
         TileDbExtractor(const TileDbSparseMatrix* p) : parent(p), base(parent) {
