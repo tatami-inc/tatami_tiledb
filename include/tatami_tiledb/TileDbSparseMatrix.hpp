@@ -181,26 +181,18 @@ public:
     using tatami::Matrix<Value_, Index_>::sparse_column;
 
 public:
-    struct Chunk {
-        Chunk() = default;
-        Chunk(size_t nnz, size_t ne) : values(nnz), indices(nnz), indptrs(ne + 1) {}
+    /*************************************************
+     * Defines the TileDB workspace and chunk cache. *
+     *************************************************/
+
+    struct Slab {
+        Slab() = default;
+        Slab(size_t nnz, size_t ne) : values(nnz), indices(nnz), indptrs(ne + 1) {}
 
         std::vector<Value_> values;
         std::vector<Index_> indices;
         std::vector<size_t> indptrs;
-
-        void swap(Chunk& right) {
-            values.swap(right.values);
-            indices.swap(right.indices);
-            indptrs.swap(right.indptrs);
-        }
     };
-
-    template<bool accrow_>
-    using OracleCache = tatami::OracleChunkCache<Index_, Index_, Chunk>; 
-
-    template<bool accrow_>
-    using LruCache = tatami::LruChunkCache<Index_, Chunk>;
 
     template<bool accrow_>
     struct Workspace {
@@ -208,21 +200,13 @@ public:
 
         void set_cache(const TileDbSparseMatrix* parent, Index_ other_dim) {
             auto chunk_dim = parent->template get_target_chunk_dim<accrow_>();
-            chunk_size_in_elements = static_cast<size_t>(chunk_dim) * static_cast<size_t>(other_dim);
-            num_chunks_in_cache = static_cast<double>(parent->cache_size_in_elements) / chunk_size_in_elements;
+            cache_workspace = tatami_chunked::TypicalSlabCacheWorkspace<Index_, Slab>(chunk_dim, other_dim, parent->cache_size_in_elements, parent->require_minimum_cache);
 
-            // Mandate a minimum number of caches.
-            if (parent->require_minimum_cache && num_chunks_in_cache == 0) {
-                num_chunks_in_cache = 1;
-            }
-
-            // Only set up the LRU cache if there is a non-zero number of chunks.
-            if (num_chunks_in_cache > 0) {
-                historian.reset(new LruCache<accrow_>(num_chunks_in_cache));
-                holding_coords.resize(chunk_size_in_elements);
-            } else {
-                uncached.reset(new Chunk(other_dim, 1));
+            if (cache_workspace.num_slabs_in_cache == 0) {
+                uncached.reset(new Slab(other_dim, 1));
                 holding_coords.resize(other_dim);
+            } else {
+                holding_coords.resize(cache_workspace.slab_size_in_elements);
             }
         }
 
@@ -231,27 +215,21 @@ public:
         tiledb::Context ctx;
         tiledb::Array array;
 
-        // TODO: figure out what the maximum range of the coordinates can be.
-        std::vector<int> holding_coords;
+        std::vector<int> holding_coords; // TODO: figure out what the maximum range of the coordinates can be.
 
-    public:
         // Caching members.
-        size_t chunk_size_in_elements;
-        Index_ num_chunks_in_cache;
+        tatami_chunked::TypicalSlabCacheWorkspace<Index_, Slab> cache_workspace;
 
-        // Uncached.
-        std::unique_ptr<Chunk> uncached;
-
-        // Cache with an oracle.
-        std::unique_ptr<OracleCache<accrow_> > futurist;
-
-        // Cache without an oracle.
-        std::unique_ptr<LruCache<accrow_> > historian;
+        std::unique_ptr<Slab> uncached;
     };
 
 private:
+    /********************************
+     * Defines extraction functions *
+     ********************************/
+
     template<bool accrow_, typename ExtractType_>
-    void extract_base(Index_ primary_start, Index_ primary_end, Chunk& target, const ExtractType_& extract_value, Index_ extract_length, Workspace<accrow_>& work) const {
+    void extract_base(Index_ primary_start, Index_ primary_end, Slab& target, const ExtractType_& extract_value, Index_ extract_length, Workspace<accrow_>& work) const {
         tiledb::Subarray subarray(work.ctx, work.array);
 
         constexpr int dimdex = (accrow_ != transpose_);
@@ -316,7 +294,7 @@ private:
     }
 
     template<bool accrow_, typename ExtractType_>
-    std::pair<const Chunk*, Index_> extract_without_cache(Index_ i, const ExtractType_& extract_value, Index_ extract_length, Workspace<accrow_>& work) const {
+    std::pair<const Slab*, Index_> extract_without_cache(Index_ i, const ExtractType_& extract_value, Index_ extract_length, Workspace<accrow_>& work) const {
 #ifndef TATAMI_TILEDB_PARALLEL_LOCK
         #pragma omp critical
         {
@@ -331,34 +309,26 @@ private:
 #else
         });
 #endif
-        return std::pair<const Chunk*, Index_>(work.uncached.get(), 0);
+        return std::pair<const Slab*, Index_>(work.uncached.get(), 0);
     }
 
     template<bool accrow_, typename ExtractType_>
-    void extract_chunk(Index_ chunk_id, Index_ dim, Index_ chunk_dim, Chunk& current_chunk, const ExtractType_& extract_value, Index_ extract_length, Workspace<accrow_>& work) const {
+    void extract_chunk(Index_ chunk_id, Index_ dim, Index_ chunk_dim, Slab& current_chunk, const ExtractType_& extract_value, Index_ extract_length, Workspace<accrow_>& work) const {
         Index_ chunk_start = chunk_id * chunk_dim;
         Index_ chunk_end = std::min(dim, chunk_start + chunk_dim);
         extract_base<accrow_>(chunk_start, chunk_end, current_chunk, extract_value, extract_length, work);
     }
 
     template<bool accrow_, typename ExtractType_>
-    std::pair<const Chunk*, Index_> extract_with_oracle(Index_ mydim, Index_ chunk_mydim, const ExtractType_& extract_value, Index_ extract_length, Workspace<accrow_>& work) const {
-        return work.futurist->next_chunk(
+    std::pair<const Slab*, Index_> extract_with_oracle(Index_ mydim, Index_ chunk_mydim, const ExtractType_& extract_value, Index_ extract_length, Workspace<accrow_>& work) const {
+        return work.cache_workspace.oracle_cache->next(
             /* identify = */ [&](Index_ current) -> std::pair<Index_, Index_> {
                 return std::pair<Index_, Index_>(current / chunk_mydim, current % chunk_mydim);
             },
-            /* swap = */ [](Chunk& left, Chunk& right) -> void {
-                left.swap(right);
+            /* create = */ [&]() -> Slab {
+                return Slab(work.cache_workspace.slab_size_in_elements, chunk_mydim);
             },
-            /* ready = */ [](const Chunk& x) -> bool {
-                return !x.indptrs.empty();
-            },
-            /* allocate = */ [&](Chunk& x) -> void {
-                x.values.resize(work.chunk_size_in_elements);
-                x.indices.resize(work.chunk_size_in_elements);
-                x.indptrs.resize(chunk_mydim + 1);
-            },
-            /* populate = */ [&](const std::vector<std::pair<Index_, Index_> >& chunks_in_need, std::vector<Chunk>& chunk_data) -> void {
+            /* populate = */ [&](const std::vector<std::pair<Index_, Index_> >& chunks_in_need, std::vector<Slab*>& chunk_data) -> void {
 #ifndef TATAMI_TILEDB_PARALLEL_LOCK
                 #pragma omp critical
                 {
@@ -367,7 +337,7 @@ private:
 #endif
 
                 for (const auto& c : chunks_in_need) {
-                    auto& cache_target = chunk_data[c.second];
+                    auto& cache_target = *(chunk_data[c.second]);
                     extract_chunk<accrow_>(c.first, mydim, chunk_mydim, cache_target, extract_value, extract_length, work);
                 }
 
@@ -381,18 +351,16 @@ private:
     }
 
     template<bool accrow_, typename ExtractType_>
-    std::pair<const Chunk*, Index_> extract_without_oracle(Index_ i, Index_ mydim, Index_ chunk_mydim, const ExtractType_& extract_value, Index_ extract_length, Workspace<accrow_>& work) const {
+    std::pair<const Slab*, Index_> extract_without_oracle(Index_ i, Index_ mydim, Index_ chunk_mydim, const ExtractType_& extract_value, Index_ extract_length, Workspace<accrow_>& work) const {
         auto chunk = i / chunk_mydim;
         auto index = i % chunk_mydim;
 
-        const auto& cache_target = work.historian->find_chunk(
+        const auto& cache_target = work.cache_workspace.lru_cache->find(
             chunk,
-            /* create = */ [&]() -> Chunk {
-                return Chunk(work.chunk_size_in_elements, chunk_mydim);
+            /* create = */ [&]() -> Slab {
+                return Slab(work.cache_workspace.slab_size_in_elements, chunk_mydim);
             },
-            /* populate = */ [&](Index_ id, Chunk& chunk_contents) -> void {
-                Index_ actual_dim;
-
+            /* populate = */ [&](Index_ id, Slab& chunk_contents) -> void {
 #ifndef TATAMI_TILEDB_PARALLEL_LOCK
                 #pragma omp critical
                 {
@@ -400,7 +368,7 @@ private:
                 TATAMI_TILEDB_PARALLEL_LOCK([&]() -> void {
 #endif
 
-                extract_chunk<accrow_>(chunk, mydim, chunk_mydim, chunk_contents, extract_value, extract_length, work);
+                extract_chunk<accrow_>(id, mydim, chunk_mydim, chunk_contents, extract_value, extract_length, work);
 
 #ifndef TATAMI_TILEDB_PARALLEL_LOCK
                 }
@@ -410,18 +378,18 @@ private:
             }
         );
 
-        return std::pair<const Chunk*, Index_>(&cache_target, index);
+        return std::pair<const Slab*, Index_>(&cache_target, index);
     }
 
 private:
     template<bool accrow_, typename ExtractType_>
-    std::pair<const Chunk*, Index_> extract(Index_ i, const ExtractType_& extract_value, Index_ extract_length, Workspace<accrow_>& work) const {
-        if (work.num_chunks_in_cache == 0) {
+    std::pair<const Slab*, Index_> extract(Index_ i, const ExtractType_& extract_value, Index_ extract_length, Workspace<accrow_>& work) const {
+        if (work.cache_workspace.num_slabs_in_cache == 0) {
             return extract_without_cache(i, extract_value, extract_length, work);
         } else {
             Index_ mydim = get_target_dim<accrow_>();
             Index_ tile_mydim = get_target_chunk_dim<accrow_>();
-            if (work.futurist) {
+            if (work.cache_workspace.oracle_cache) {
                 return extract_with_oracle(mydim, tile_mydim, extract_value, extract_length, work);
             } else {
                 return extract_without_oracle(i, mydim, tile_mydim, extract_value, extract_length, work);
@@ -497,6 +465,10 @@ private:
     }
 
 private:
+    /*************************************
+     * Defines the extractors themselves *
+     *************************************/
+
     template<bool accrow_, tatami::DimensionSelectionType selection_, bool sparse_>
     struct TileDbExtractor : public tatami::Extractor<selection_, sparse_, Value_, Index_> {
         TileDbExtractor(const TileDbSparseMatrix* p) : parent(p), base(parent) {
@@ -537,13 +509,7 @@ private:
         }
 
         void set_oracle(std::unique_ptr<tatami::Oracle<Index_> > o) {
-            if (base.num_chunks_in_cache > 0) {
-                auto chunk_mydim = parent->template get_target_chunk_dim<accrow_>();
-                size_t max_predictions = static_cast<size_t>(base.num_chunks_in_cache) * chunk_mydim * 2; // double the cache size, basically.
-                base.futurist.reset(new OracleCache<accrow_>(std::move(o), max_predictions, base.num_chunks_in_cache));
-                base.historian.reset();
-                base.uncached.reset();
-            }
+            base.cache_workspace.set_oracle(std::move(o));
         }
     };
 
