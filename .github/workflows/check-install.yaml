@@ -55,4 +55,4 @@ jobs:
         find_package(tatami_tatami_tiledb)
         target_link_libraries(whee tatami::tatami_tiledb)
         EOF
-        cd _downstream && cmake -S . -B build
+        cd _downstream && cmake -S . -B build -DCMAKE_PREFIX_PATH=../libtiledb
