@@ -100,6 +100,7 @@ $(function() {
 <div class="ttc" id="astructtatami__tiledb_1_1TileDbOptions_html_a8fec7a4cd15cace444af6c3fb3c9f7da"><div class="ttname"><a href="structtatami__tiledb_1_1TileDbOptions.html#a8fec7a4cd15cace444af6c3fb3c9f7da">tatami_tiledb::TileDbOptions::require_minimum_cache</a></div><div class="ttdeci">bool require_minimum_cache</div><div class="ttdef"><b>Definition:</b> TileDbOptions.hpp:31</div></div>
 </div><!-- fragment --><p >Check out the <a href="https://tatami-inc.github.io/tatami_tiledb">reference documentation</a> for more details.</p>
 <h1>Building projects</h1>
+<h2>Cmake with <code>FetchContent</code></h2>
 <p >If you're using CMake, you just need to add something like this to your <code>CMakeLists.txt</code>:</p>
 <div class="fragment"><div class="line">include(FetchContent)</div>
 <div class="line"> </div>
@@ -116,11 +117,20 @@ $(function() {
 <div class="line"> </div>
 <div class="line"># For libaries</div>
 <div class="line">target_link_libraries(mylib INTERFACE tatami_tiledb)</div>
-</div><!-- fragment --><p >You'll also need to link to the TileDB library yourself (version 2.15 or higher). <b><a class="el" href="namespacetatami__tiledb.html" title="tatami bindings for TileDB matrices.">tatami_tiledb</a></b> does not place any restrictions on the source of the TileDB library; in the simplest case, we just download the latest <a href="https://github.com/TileDB-Inc/TileDB/releases">release</a>, unpack it in some <code>tiledb/</code> directory, and link to it as shown below. (Proper installation instructions for TileDB can be found in their <a href="https://docs.tiledb.com/main/how-to/installation/pre-built-packages">documentation</a>.)</p>
+</div><!-- fragment --><h2>CMake using <code>find_package()</code></h2>
+<p >You can install the library by cloning a suitable version of this repository and running the following commands:</p>
+<div class="fragment"><div class="line">mkdir build &amp;&amp; cd build</div>
+<div class="line">cmake .. -DTATAMI_TILEDB_TESTS=OFF</div>
+<div class="line">cmake --build . --target install</div>
+</div><!-- fragment --><p >Then you can use <code>find_package()</code> as usual:</p>
+<div class="fragment"><div class="line">find_package(tatami_tatami_tiledb CONFIG REQUIRED)</div>
+<div class="line">target_link_libraries(mylib INTERFACE tatami::tatami_tiledb)</div>
+</div><!-- fragment --><h2>Manual</h2>
+<p >If you're not using CMake, the simple approach is to just copy the files - either directly or with Git submodules - and include their path during compilation with, e.g., GCC's <code>-I</code>. This will also require the dependencies listed in <a href="extern/CMakeLists.txt"><code>extern/CMakeLists.txt</code></a>, namely the <a href="https://github.com/tatami-inc/tatami_chunked"><b>tatami_chunked</b></a> library.</p>
+<p >You'll also need to link to the TileDB library yourself (version 2.15 or higher). <b><a class="el" href="namespacetatami__tiledb.html" title="tatami bindings for TileDB matrices.">tatami_tiledb</a></b> does not place any restrictions on the source of the TileDB library; in the simplest case, we just download the latest <a href="https://github.com/TileDB-Inc/TileDB/releases">release</a>, unpack it in some <code>tiledb/</code> directory, and link to it as shown below. (Proper installation instructions for TileDB can be found in their <a href="https://docs.tiledb.com/main/how-to/installation/pre-built-packages">documentation</a>.)</p>
 <div class="fragment"><div class="line">find_package(TileDB PATHS tiledb)</div>
 <div class="line">target_link_libraries(myexe TileDB::tiledb_shared)</div>
-</div><!-- fragment --><p >If you're not using CMake, the simple approach is to just copy the files - either directly or with Git submodules - and include their path during compilation with, e.g., GCC's <code>-I</code>. This will also require the core <a href="https://github.com/tatami-inc/tatami"><b>tatami</b></a> library. </p>
-</div></div><!-- PageDoc -->
+</div><!-- fragment --> </div></div><!-- PageDoc -->
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
