@@ -27,13 +27,13 @@ jobs:
       if: steps.cache.outputs.cache-hit != 'true'
       run: |
         sudo apt-get install wget
-        mkdir tests/lib
-        cd tests/lib
+        mkdir libtiledb
+        cd libtiledb
         wget https://github.com/TileDB-Inc/TileDB/releases/download/2.15.3/tiledb-linux-x86_64-2.15.3-689bea0.tar.gz -O tiledb.tar.gz
         tar -xvf tiledb.tar.gz
 
     - name: Configure the build
-      run: cmake -S . -B build -DTATAMI_HDF5_FETCH_EXTERN=OFF -DTATAMI_HDF5_TESTS=OFF
+      run: cmake -S . -B build -DTATAMI_HDF5_FETCH_EXTERN=OFF -DTATAMI_HDF5_TESTS=OFF -DCMAKE_PREFIX_PATH=libtiledb
 
     - name: Install the library
       run: sudo cmake --install build

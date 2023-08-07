@@ -36,14 +36,14 @@ jobs:
       if: steps.cache.outputs.cache-hit != 'true'
       run: |
         sudo apt-get install wget
-        mkdir tests/lib
-        cd tests/lib
+        mkdir libtiledb
+        cd libtiledb
         wget https://github.com/TileDB-Inc/TileDB/releases/download/2.15.3/tiledb-linux-x86_64-2.15.3-689bea0.tar.gz -O tiledb.tar.gz
         tar -xvf tiledb.tar.gz
 
     - name: Configure the build with coverage
       if: ${{ matrix.config.cov }}
-      run: cmake -S . -B build -DCODE_COVERAGE=ON 
+      run: cmake -S . -B build -DCODE_COVERAGE=ON -DCMAKE_PREFIX_PATH=libtiledb
 
     - name: Configure the build with OpenMP
       if: ${{ matrix.config.omp }}
