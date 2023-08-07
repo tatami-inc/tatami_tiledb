@@ -1,5 +1,6 @@
 var searchData=
 [
-  ['indexextractor_0',['IndexExtractor',['https://tatami-inc.github.io/tatami/structtatami_1_1IndexExtractor.html',1,'tatami']]],
-  ['iterator_1',['Iterator',['https://tatami-inc.github.io/tatami/structtatami_1_1SomeNumericArray_1_1Iterator.html',1,'tatami::SomeNumericArray']]]
+  ['matrix_0',['Matrix',['https://tatami-inc.github.io/tatami/classtatami_1_1Matrix.html',1,'tatami']]],
+  ['matrix_3c_20value_5f_2c_20index_5f_20_3e_1',['Matrix&lt; Value_, Index_ &gt;',['https://tatami-inc.github.io/tatami/classtatami_1_1Matrix.html',1,'tatami']]],
+  ['matrix_3c_20value_5fout_5f_2c_20index_5fout_5f_20_3e_2',['Matrix&lt; Value_out_, Index_out_ &gt;',['https://tatami-inc.github.io/tatami/classtatami_1_1Matrix.html',1,'tatami']]]
 ];

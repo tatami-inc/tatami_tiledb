@@ -1,8 +1,8 @@
 <?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
-<tagfile doxygen_version="1.9.7">
+<tagfile doxygen_version="1.9.5">
   <compound kind="file">
     <name>make_TileDbMatrix.hpp</name>
-    <path>tatami_tiledb/</path>
+    <path>/github/workspace/include/tatami_tiledb/</path>
     <filename>make__TileDbMatrix_8hpp.html</filename>
     <namespace>tatami_tiledb</namespace>
     <member kind="function">
@@ -22,27 +22,27 @@
   </compound>
   <compound kind="file">
     <name>tatami_tiledb.hpp</name>
-    <path>tatami_tiledb/</path>
+    <path>/github/workspace/include/tatami_tiledb/</path>
     <filename>tatami__tiledb_8hpp.html</filename>
     <namespace>tatami_tiledb</namespace>
   </compound>
   <compound kind="file">
     <name>TileDbDenseMatrix.hpp</name>
-    <path>tatami_tiledb/</path>
+    <path>/github/workspace/include/tatami_tiledb/</path>
     <filename>TileDbDenseMatrix_8hpp.html</filename>
     <class kind="class">tatami_tiledb::TileDbDenseMatrix</class>
     <namespace>tatami_tiledb</namespace>
   </compound>
   <compound kind="file">
     <name>TileDbOptions.hpp</name>
-    <path>tatami_tiledb/</path>
+    <path>/github/workspace/include/tatami_tiledb/</path>
     <filename>TileDbOptions_8hpp.html</filename>
     <class kind="struct">tatami_tiledb::TileDbOptions</class>
     <namespace>tatami_tiledb</namespace>
   </compound>
   <compound kind="file">
     <name>TileDbSparseMatrix.hpp</name>
-    <path>tatami_tiledb/</path>
+    <path>/github/workspace/include/tatami_tiledb/</path>
     <filename>TileDbSparseMatrix_8hpp.html</filename>
     <class kind="class">tatami_tiledb::TileDbSparseMatrix</class>
     <namespace>tatami_tiledb</namespace>
@@ -134,6 +134,6 @@
     <name>index</name>
     <title>tatami for TileDB matrices</title>
     <filename>index.html</filename>
-    <docanchor file="index.html">md__2github_2workspace_2README</docanchor>
+    <docanchor file="index.html">md__github_workspace_README</docanchor>
   </compound>
 </tagfile>

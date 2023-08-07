@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['permutation_0',['permutation',['https://tatami-inc.github.io/tatami/structtatami_1_1LayeredMatrixData.html#ae9c9cfb331519d5c7e18f4e51fc2898c',1,'tatami::LayeredMatrixData']]]
+  ['pointers_0',['pointers',['https://tatami-inc.github.io/tatami/structtatami_1_1CompressedSparseContents.html#ad56fc74d757e9dcd8ffbdc48d5adc692',1,'tatami::CompressedSparseContents']]]
 ];
