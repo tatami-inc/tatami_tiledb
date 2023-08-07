@@ -1,9 +1,13 @@
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - master
+  pull_request:
 
 name: Run unit tests
 
 jobs:
-  build:
+  test:
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
     strategy:
@@ -66,6 +70,6 @@ jobs:
 
     - name: Upload to Codecov
       if: ${{ matrix.config.cov }}
-      uses: codecov/codecov-action@v2.1.0
+      uses: codecov/codecov-action@v3
       with:
         directory: build/tests/CMakeFiles/
