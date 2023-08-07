@@ -15,11 +15,6 @@ jobs:
       matrix:
         config:
         - {
-            name: "Ubuntu Latest GCC, OpenMP enabled", 
-            os: ubuntu-latest,
-            omp: true
-          }
-        - {
             name: "Ubuntu Latest GCC, coverage enabled", 
             os: ubuntu-latest,
             cov: true
