@@ -23,6 +23,12 @@ jobs:
         cmake -S . -B build -DTATAMI_CHUNKED_TESTS=OFF
         sudo cmake --install build
 
+    - uses: actions/cache@v3
+      id: cache
+      with:
+        path: libtiledb
+        key: tiledb-2.15.3-2
+
     - name: Install TileDB
       if: steps.cache.outputs.cache-hit != 'true'
       run: |
