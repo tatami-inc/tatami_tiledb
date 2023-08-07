@@ -272,7 +272,7 @@ private:
             /* identify = */ [&](Index_ current) -> std::pair<Index_, Index_> {
                 return std::pair<Index_, Index_>(current / chunk_mydim, current % chunk_mydim);
             },
-            /* allocate = */ [&]() -> Slab {
+            /* create = */ [&]() -> Slab {
                 return Slab(work.cache_workspace.slab_size_in_elements);
             },
             /* populate = */ [&](const std::vector<std::pair<Index_, Index_> >& chunks_in_need, std::vector<Slab*>& chunk_data) -> void {

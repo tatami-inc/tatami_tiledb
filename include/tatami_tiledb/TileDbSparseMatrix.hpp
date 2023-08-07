@@ -192,12 +192,6 @@ public:
         std::vector<Value_> values;
         std::vector<Index_> indices;
         std::vector<size_t> indptrs;
-
-        void swap(Slab& right) {
-            values.swap(right.values);
-            indices.swap(right.indices);
-            indptrs.swap(right.indptrs);
-        }
     };
 
     template<bool accrow_>
@@ -207,9 +201,12 @@ public:
         void set_cache(const TileDbSparseMatrix* parent, Index_ other_dim) {
             auto chunk_dim = parent->template get_target_chunk_dim<accrow_>();
             cache_workspace = tatami_chunked::TypicalSlabCacheWorkspace<Index_, Slab>(chunk_dim, other_dim, parent->cache_size_in_elements, parent->require_minimum_cache);
+
             if (cache_workspace.num_slabs_in_cache == 0) {
                 uncached.reset(new Slab(other_dim, 1));
                 holding_coords.resize(other_dim);
+            } else {
+                holding_coords.resize(cache_workspace.slab_size_in_elements);
             }
         }
 
@@ -328,7 +325,7 @@ private:
             /* identify = */ [&](Index_ current) -> std::pair<Index_, Index_> {
                 return std::pair<Index_, Index_>(current / chunk_mydim, current % chunk_mydim);
             },
-            /* Create = */ [&]() -> Slab {
+            /* create = */ [&]() -> Slab {
                 return Slab(work.cache_workspace.slab_size_in_elements, chunk_mydim);
             },
             /* populate = */ [&](const std::vector<std::pair<Index_, Index_> >& chunks_in_need, std::vector<Slab*>& chunk_data) -> void {
@@ -364,8 +361,6 @@ private:
                 return Slab(work.cache_workspace.slab_size_in_elements, chunk_mydim);
             },
             /* populate = */ [&](Index_ id, Slab& chunk_contents) -> void {
-                Index_ actual_dim;
-
 #ifndef TATAMI_TILEDB_PARALLEL_LOCK
                 #pragma omp critical
                 {
