@@ -14,37 +14,42 @@ FetchContent_MakeAvailable(googletest)
 
 enable_testing()
 
-add_executable(libtest
-    src/TileDbDenseMatrix.cpp
-    src/TileDbSparseMatrix.cpp)
-
-find_package(TileDB PATHS lib)
-
-target_link_libraries(libtest 
-    gtest_main
-    TileDB::tiledb_shared 
-    tatami_tiledb)
-
 include(CheckIncludeFiles)
 check_include_files(filesystem HAVE_CXX_FS)
-if (NOT HAVE_CXX_FS)
-    target_link_libraries(libtest stdc++fs)
-endif()
-
-# Checking whether to add OpenMP support. This is turned off
-# by default to make it easier to debug test failures.
-set(USE_OPENMP OFF CACHE BOOL "Compile with OpenMP support")
-if (USE_OPENMP)
-    find_package(OpenMP REQUIRED)
-    target_link_libraries(libtest OpenMP::OpenMP_CXX)
-endif()
 
 set(CODE_COVERAGE OFF CACHE BOOL "Enable coverage testing")
-if(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(libtest PRIVATE -O0 -g --coverage)
-    target_link_options(libtest PRIVATE --coverage)
-endif()
 
-# Making the tests discoverable.
 include(GoogleTest)
-gtest_discover_tests(libtest)
+
+macro(create_test target)
+    add_executable(${target}
+        src/TileDbDenseMatrix.cpp
+        src/TileDbSparseMatrix.cpp)
+
+    find_package(TileDB PATHS lib)
+
+    target_link_libraries(${target} 
+        gtest_main
+        TileDB::tiledb_shared 
+        tatami_tiledb)
+
+    if (NOT HAVE_CXX_FS)
+        target_link_libraries(${target} stdc++fs)
+    endif()
+
+    if(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(${target} PRIVATE -O0 -g --coverage)
+        target_link_options(${target} PRIVATE --coverage)
+    endif()
+
+    gtest_discover_tests(${target})
+endmacro()
+
+create_test(libtest)
+
+# Checking whether to test OpenMP support. 
+find_package(OpenMP)
+if (OpenMP_FOUND)
+    create_test(omptest)
+    target_link_libraries(ompttest OpenMP::OpenMP_CXX)
+endif()
