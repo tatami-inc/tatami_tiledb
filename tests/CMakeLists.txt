@@ -26,11 +26,8 @@ macro(create_test target)
         src/TileDbDenseMatrix.cpp
         src/TileDbSparseMatrix.cpp)
 
-    find_package(TileDB PATHS lib)
-
     target_link_libraries(${target} 
         gtest_main
-        TileDB::tiledb_shared 
         tatami_tiledb)
 
     if (NOT HAVE_CXX_FS)
