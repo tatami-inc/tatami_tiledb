@@ -76,7 +76,6 @@ $(function() {
 </div><!-- top -->
 <div class="header">
   <div class="summary">
-<a href="#pub-types">Public Types</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="classtatami__tiledb_1_1TileDbSparseMatrix-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">tatami_tiledb::TileDbSparseMatrix&lt; Value_, Index_, transpose_ &gt; Class Template Reference</div></div>
@@ -106,24 +105,6 @@ Collaboration diagram for tatami_tiledb::TileDbSparseMatrix&lt; Value_, Index_, 
 </map>
 <center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-types" name="pub-types"></a>
-Public Types</h2></td></tr>
-<tr class="memitem:a55b52943a8db332cb026c0c9d719675b"><td class="memTemplParams" colspan="2"><a id="a55b52943a8db332cb026c0c9d719675b" name="a55b52943a8db332cb026c0c9d719675b"></a>
-template&lt;bool accrow_&gt; </td></tr>
-<tr class="memitem:a55b52943a8db332cb026c0c9d719675b"><td class="memTemplItemLeft" align="right" valign="top">using&#160;</td><td class="memTemplItemRight" valign="bottom"><b>OracleCache</b> = tatami::OracleChunkCache&lt; Index_, Index_, Chunk &gt;</td></tr>
-<tr class="separator:a55b52943a8db332cb026c0c9d719675b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa643ce284f13d5adc590a73f3fe20306"><td class="memTemplParams" colspan="2"><a id="aa643ce284f13d5adc590a73f3fe20306" name="aa643ce284f13d5adc590a73f3fe20306"></a>
-template&lt;bool accrow_&gt; </td></tr>
-<tr class="memitem:aa643ce284f13d5adc590a73f3fe20306"><td class="memTemplItemLeft" align="right" valign="top">using&#160;</td><td class="memTemplItemRight" valign="bottom"><b>LruCache</b> = tatami::LruChunkCache&lt; Index_, Chunk &gt;</td></tr>
-<tr class="separator:aa643ce284f13d5adc590a73f3fe20306"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="inherit_header pub_types_classtatami_1_1Matrix"><td colspan="2" onclick="javascript:toggleInherit('pub_types_classtatami_1_1Matrix')"><img src="closed.png" alt="-"/>&#160;Public Types inherited from <a class="el"  href="https://tatami-inc.github.io/tatami/classtatami_1_1Matrix.html">tatami::Matrix&lt; Value_, Index_ &gt;</a></td></tr>
-<tr class="memitem:a5b783d3ab440b7696c635a4b16516ba8 inherit pub_types_classtatami_1_1Matrix"><td class="memItemLeft" align="right" valign="top"><a id="a5b783d3ab440b7696c635a4b16516ba8" name="a5b783d3ab440b7696c635a4b16516ba8"></a>
-typedef Value_&#160;</td><td class="memItemRight" valign="bottom"><a class="elRef" href="https://tatami-inc.github.io/tatami/classtatami_1_1Matrix.html#a5b783d3ab440b7696c635a4b16516ba8">value_type</a></td></tr>
-<tr class="separator:a5b783d3ab440b7696c635a4b16516ba8 inherit pub_types_classtatami_1_1Matrix"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adebf536caf3a3c1751eefc6e10f0b16e inherit pub_types_classtatami_1_1Matrix"><td class="memItemLeft" align="right" valign="top"><a id="adebf536caf3a3c1751eefc6e10f0b16e" name="adebf536caf3a3c1751eefc6e10f0b16e"></a>
-typedef Index_&#160;</td><td class="memItemRight" valign="bottom"><a class="elRef" href="https://tatami-inc.github.io/tatami/classtatami_1_1Matrix.html#adebf536caf3a3c1751eefc6e10f0b16e">index_type</a></td></tr>
-<tr class="separator:adebf536caf3a3c1751eefc6e10f0b16e inherit pub_types_classtatami_1_1Matrix"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:ae876ac63c20f62517e79b24c30e05a65"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtatami__tiledb_1_1TileDbSparseMatrix.html#ae876ac63c20f62517e79b24c30e05a65">TileDbSparseMatrix</a> (std::string uri, std::string attribute, const <a class="el" href="structtatami__tiledb_1_1TileDbOptions.html">TileDbOptions</a> &amp;options)</td></tr>
@@ -243,6 +224,16 @@ std::unique_ptr&lt; <a class="elRef" href="https://tatami-inc.github.io/tatami/n
 <tr class="memitem:a80f0867067f1b1e5a235a99ecf58924b inherit pub_methods_classtatami_1_1Matrix"><td class="memItemLeft" align="right" valign="top"><a id="a80f0867067f1b1e5a235a99ecf58924b" name="a80f0867067f1b1e5a235a99ecf58924b"></a>
 std::unique_ptr&lt; <a class="elRef" href="https://tatami-inc.github.io/tatami/namespacetatami.html#a4b67b4d1b6c00cd0bd449703432a5f7b">IndexSparseExtractor</a>&lt; Value_, Index_ &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="elRef" href="https://tatami-inc.github.io/tatami/classtatami_1_1Matrix.html#a80f0867067f1b1e5a235a99ecf58924b">sparse_column</a> (std::vector&lt; Index_ &gt; indices) const</td></tr>
 <tr class="separator:a80f0867067f1b1e5a235a99ecf58924b inherit pub_methods_classtatami_1_1Matrix"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="inherited" name="inherited"></a>
+Additional Inherited Members</h2></td></tr>
+<tr class="inherit_header pub_types_classtatami_1_1Matrix"><td colspan="2" onclick="javascript:toggleInherit('pub_types_classtatami_1_1Matrix')"><img src="closed.png" alt="-"/>&#160;Public Types inherited from <a class="el"  href="https://tatami-inc.github.io/tatami/classtatami_1_1Matrix.html">tatami::Matrix&lt; Value_, Index_ &gt;</a></td></tr>
+<tr class="memitem:a5b783d3ab440b7696c635a4b16516ba8 inherit pub_types_classtatami_1_1Matrix"><td class="memItemLeft" align="right" valign="top"><a id="a5b783d3ab440b7696c635a4b16516ba8" name="a5b783d3ab440b7696c635a4b16516ba8"></a>
+typedef Value_&#160;</td><td class="memItemRight" valign="bottom"><a class="elRef" href="https://tatami-inc.github.io/tatami/classtatami_1_1Matrix.html#a5b783d3ab440b7696c635a4b16516ba8">value_type</a></td></tr>
+<tr class="separator:a5b783d3ab440b7696c635a4b16516ba8 inherit pub_types_classtatami_1_1Matrix"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adebf536caf3a3c1751eefc6e10f0b16e inherit pub_types_classtatami_1_1Matrix"><td class="memItemLeft" align="right" valign="top"><a id="adebf536caf3a3c1751eefc6e10f0b16e" name="adebf536caf3a3c1751eefc6e10f0b16e"></a>
+typedef Index_&#160;</td><td class="memItemRight" valign="bottom"><a class="elRef" href="https://tatami-inc.github.io/tatami/classtatami_1_1Matrix.html#adebf536caf3a3c1751eefc6e10f0b16e">index_type</a></td></tr>
+<tr class="separator:adebf536caf3a3c1751eefc6e10f0b16e inherit pub_types_classtatami_1_1Matrix"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><div class="compoundTemplParams">template&lt;typename Value_, typename Index_, bool transpose_ = false&gt;<br />
