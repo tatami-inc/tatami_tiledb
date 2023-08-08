@@ -246,7 +246,8 @@ class tatami_tiledb::TileDbSparseMatrix&lt; Value_, Index_, transpose_ &gt;</div
   </table>
   </dd>
 </dl>
-<p>Numeric sparse matrix stored in a 2-dimensional TileDB array. Chunks of data are loaded from file as needed by <code><a class="elRef" href="https://tatami-inc.github.io/tatami/namespacetatami.html#ae9f8db5316521603085577d977a6955f">tatami::Extractor</a></code> objects, with additional caching to avoid repeated reads from disk. The size of cached chunks is determined by the extent of the tiles in the TileDB array. </p>
+<p>Numeric sparse matrix stored in a 2-dimensional TileDB array. Chunks of data are loaded from file as needed by <code><a class="elRef" href="https://tatami-inc.github.io/tatami/namespacetatami.html#ae9f8db5316521603085577d977a6955f">tatami::Extractor</a></code> objects, with additional caching to avoid repeated reads from disk. The size of cached chunks is determined by the extent of the tiles in the TileDB array.</p>
+<p >The TileDB library is thread-safe so no additional work is required to use this class in parallel code. Nonetheless, it may be </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="ae876ac63c20f62517e79b24c30e05a65" name="ae876ac63c20f62517e79b24c30e05a65"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ae876ac63c20f62517e79b24c30e05a65">&#9670;&#160;</a></span>TileDbSparseMatrix() <span class="overload">[1/2]</span></h2>
