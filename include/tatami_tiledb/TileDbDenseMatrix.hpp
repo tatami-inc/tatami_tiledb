@@ -408,7 +408,7 @@ private:
     };
 
     template<bool accrow_, tatami::DimensionSelectionType selection_, typename ... Args_>
-    std::unique_ptr<tatami::Extractor<selection_, false, Value_, Index_> > populate(const tatami::Options& opt, Args_&&... args) const {
+    std::unique_ptr<tatami::Extractor<selection_, false, Value_, Index_> > populate(const tatami::Options&, Args_&&... args) const {
         std::unique_ptr<tatami::Extractor<selection_, false, Value_, Index_> > output;
 
 #ifdef TATAMI_TILEDB_PARALLEL_LOCK

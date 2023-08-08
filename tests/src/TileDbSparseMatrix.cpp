@@ -216,7 +216,7 @@ TEST_P(TileDbSparseAccessUncachedTest, ForcedCache) {
     tatami_test::test_simple_row_access(&mat, &ref, FORWARD, JUMP);
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     TileDbSparseMatrix,
     TileDbSparseAccessUncachedTest,
     ::testing::Combine(
@@ -261,7 +261,7 @@ TEST_P(TileDbSparseAccessTest, Transposed) {
     tatami_test::test_simple_row_access(&mat, &ref, FORWARD, JUMP);
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     TileDbSparseMatrix,
     TileDbSparseAccessTest,
     ::testing::Combine(
@@ -324,7 +324,7 @@ TEST_P(TileDbSparseAccessMiscTest, Oracle) {
     tatami_test::test_oracle_column_access<tatami::NumericMatrix>(&mat, &ref, true);
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     TileDbSparseMatrix,
     TileDbSparseAccessMiscTest,
     ::testing::Combine(
@@ -388,7 +388,7 @@ TEST_P(TileDbSparseSlicedTest, Transposed) {
     }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     TileDbSparseMatrix,
     TileDbSparseSlicedTest,
     ::testing::Combine(
@@ -459,7 +459,7 @@ TEST_P(TileDbSparseIndexedTest, Transposed) {
     }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     TileDbSparseMatrix,
     TileDbSparseIndexedTest,
     ::testing::Combine(
@@ -492,7 +492,7 @@ TEST_P(TileDbSparseParallelTest, Basic) {
     tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, opt);
 
     std::vector<double> test_rowsums(NR);
-    tatami::parallelize([&](int t, int start, int len) -> void {
+    tatami::parallelize([&](int, int start, int len) -> void {
         std::vector<double> buffer(NC);
         int end = start + len;
 
@@ -513,7 +513,7 @@ TEST_P(TileDbSparseParallelTest, Basic) {
     }, NR, 3);
 
     std::vector<double> test_colsums(NC);
-    tatami::parallelize([&](int t, int start, int len) -> void {
+    tatami::parallelize([&](int, int start, int len) -> void {
         std::vector<double> buffer(NR);
         int end = start + len;
 
@@ -540,7 +540,7 @@ TEST_P(TileDbSparseParallelTest, Basic) {
     EXPECT_EQ(test_colsums, colsums);
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     TileDbSparseMatrix,
     TileDbSparseParallelTest,
     ::testing::Values(0, 1, 2) // 0 = uncached, 1 = LRU cache, 2 = oracle cache.

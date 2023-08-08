@@ -34,6 +34,8 @@ macro(create_test target)
         target_link_libraries(${target} stdc++fs)
     endif()
 
+    target_compile_options(${target} PRIVATE -Wall -Wpedantic -Wextra)
+
     if(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         target_compile_options(${target} PRIVATE -O0 -g --coverage)
         target_link_options(${target} PRIVATE --coverage)
