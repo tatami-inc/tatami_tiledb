@@ -31,7 +31,8 @@ namespace tatami_tiledb {
  * The size of cached chunks is determined by the extent of the tiles in the TileDB array.
  *
  * The TileDB library is thread-safe so no additional work is required to use this class in parallel code.
- * Nonetheless, it may be 
+ * Nonetheless, users can force all calls to TileDB to occur in serial by defining the `TATAMI_TILEDB_PARALLEL_LOCK` macro.
+ * This should be a function-like macro that accepts a function and executes it inside a user-defined serial section.
  */
 template<typename Value_, typename Index_, bool transpose_ = false>
 class TileDbSparseMatrix : public tatami::Matrix<Value_, Index_> {
