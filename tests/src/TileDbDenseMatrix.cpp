@@ -139,7 +139,7 @@ TEST_F(TileDbDenseUtilsTest, Preference) {
 /*************************************
  *************************************/
 
-class TileDbDenseAccessUncachedTest : public ::testing::TestWithParam<std::tuple<int, bool> >, public TileDbDenseMatrixTestMethods {};
+class TileDbDenseAccessUncachedTest : public ::testing::TestWithParam<std::tuple<bool, int> >, public TileDbDenseMatrixTestMethods {};
 
 TEST_P(TileDbDenseAccessUncachedTest, Basic) {
     auto param = GetParam();

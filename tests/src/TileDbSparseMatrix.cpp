@@ -167,7 +167,7 @@ TEST_F(TileDbSparseUtilsTest, Preference) {
 /*************************************
  *************************************/
 
-class TileDbSparseAccessUncachedTest : public ::testing::TestWithParam<std::tuple<int, bool> >, public TileDbSparseMatrixTestMethods {};
+class TileDbSparseAccessUncachedTest : public ::testing::TestWithParam<std::tuple<bool, int> >, public TileDbSparseMatrixTestMethods {};
 
 TEST_P(TileDbSparseAccessUncachedTest, Basic) {
     auto param = GetParam();
