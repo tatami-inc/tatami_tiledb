@@ -23,6 +23,13 @@ protected:
         return custom_opt;
     }
 
+    static auto uncached_options() {
+        tatami_tiledb::TileDbOptions opt;
+        opt.require_minimum_cache = false;
+        opt.maximum_cache_size = 0;
+        return opt;
+    }
+
     void dump(const std::pair<int, int>& tile_sizes) {
         fpath = tatami_test::temp_file_path("tatami-dense-test");
         tatami_test::remove_file_path(fpath);
@@ -132,15 +139,7 @@ TEST_F(TileDbDenseUtilsTest, Preference) {
 /*************************************
  *************************************/
 
-class TileDbDenseAccessUncachedTest : public ::testing::TestWithParam<std::tuple<int, bool> >, public TileDbDenseMatrixTestMethods {
-protected:
-    static auto create_uncached_options() {
-        tatami_tiledb::TileDbOptions opt;
-        opt.require_minimum_cache = false;
-        opt.maximum_cache_size = 0;
-        return opt;
-    }
-};
+class TileDbDenseAccessUncachedTest : public ::testing::TestWithParam<std::tuple<int, bool> >, public TileDbDenseMatrixTestMethods {};
 
 TEST_P(TileDbDenseAccessUncachedTest, Basic) {
     auto param = GetParam();
@@ -149,7 +148,7 @@ TEST_P(TileDbDenseAccessUncachedTest, Basic) {
 
     dump(std::pair<int, int>(10, 10)); // exact chunk choice doesn't matter here.
 
-    tatami_tiledb::TileDbDenseMatrix<double, int> mat(fpath, name, create_uncached_options());
+    tatami_tiledb::TileDbDenseMatrix<double, int> mat(fpath, name, uncached_options());
     tatami::DenseRowMatrix<double, int> ref(NR, NC, values);
 
     tatami_test::test_simple_column_access(&mat, &ref, FORWARD, JUMP);
@@ -163,7 +162,7 @@ TEST_P(TileDbDenseAccessUncachedTest, Transposed) {
 
     dump(std::pair<int, int>(10, 10)); // exact chunk choice doesn't matter here.
 
-    tatami_tiledb::TileDbDenseMatrix<double, int, true> mat(fpath, name, create_uncached_options());
+    tatami_tiledb::TileDbDenseMatrix<double, int, true> mat(fpath, name, uncached_options());
     std::shared_ptr<tatami::Matrix<double, int> > ptr(new tatami::DenseRowMatrix<double, int>(NR, NC, values));
     tatami::DelayedTranspose<double, int> ref(std::move(ptr));
 
@@ -252,19 +251,6 @@ INSTANTIATE_TEST_CASE_P(
  *************************************/
 
 class TileDbDenseAccessMiscTest : public ::testing::TestWithParam<std::tuple<std::pair<int, int> > >, public TileDbDenseMatrixTestMethods {};
-
-TEST_P(TileDbDenseAccessMiscTest, Apply) {
-    // Putting it through its paces for correct parallelization via apply.
-    auto param = GetParam();
-    auto chunk_sizes = std::get<0>(param);
-    dump(chunk_sizes);
-
-    tatami_tiledb::TileDbDenseMatrix<double, int> mat(fpath, name, custom_options());
-    tatami::DenseRowMatrix<double, int> ref(NR, NC, values);
-
-    EXPECT_EQ(tatami::row_sums(&mat), tatami::row_sums(&ref));
-    EXPECT_EQ(tatami::column_sums(&mat), tatami::column_sums(&ref));
-}
 
 TEST_P(TileDbDenseAccessMiscTest, LruReuse) {
     // Check that the LRU cache works as expected when cache elements are
@@ -464,3 +450,70 @@ INSTANTIATE_TEST_CASE_P(
     )
 );
 
+/*************************************
+ *************************************/
+
+class TileDbDenseParallelTest : public ::testing::TestWithParam<int>, public TileDbDenseMatrixTestMethods {};
+
+TEST_P(TileDbDenseParallelTest, Basic) {
+    std::pair<int, int> chunk_sizes(23, 13);
+    dump(chunk_sizes);
+
+    auto mode = GetParam();
+    auto opt = (mode == 0 ? uncached_options() : custom_options());
+    tatami_tiledb::TileDbDenseMatrix<double, int> mat(fpath, name, opt);
+
+    std::vector<double> test_rowsums(NR);
+    tatami::parallelize([&](int t, int start, int len) -> void {
+        std::vector<double> buffer(NC);
+        int end = start + len;
+
+        if (mode == 2) {
+            auto wrk = tatami::consecutive_extractor<true, false>(&mat, start, len);
+            for (int i = start; i < end; ++i) {
+                auto ptr = wrk->fetch(i, buffer.data());
+                test_rowsums[i] = std::accumulate(ptr, ptr + NC, 0.0);
+            }
+
+        } else {
+            auto wrk = mat.dense_row();
+            for (int i = start; i < end; ++i) {
+                auto ptr = wrk->fetch(i, buffer.data());
+                test_rowsums[i] = std::accumulate(ptr, ptr + NC, 0.0);
+            }
+        }
+    }, NR, 3);
+
+    std::vector<double> test_colsums(NC);
+    tatami::parallelize([&](int t, int start, int len) -> void {
+        std::vector<double> buffer(NR);
+        int end = start + len;
+
+        if (mode == 2) {
+            auto wrk = tatami::consecutive_extractor<false, false>(&mat, start, len);
+            for (int i = start; i < end; ++i) {
+                auto ptr = wrk->fetch(i, buffer.data());
+                test_colsums[i] = std::accumulate(ptr, ptr + NR, 0.0);
+            }
+
+        } else {
+            auto wrk = mat.dense_column();
+            for (int i = start; i < end; ++i) {
+                auto ptr = wrk->fetch(i, buffer.data());
+                test_colsums[i] = std::accumulate(ptr, ptr + NR, 0.0);
+            }
+        }
+    }, NC, 3);
+
+    tatami::DenseRowMatrix<double, int> ref(NR, NC, values);
+    auto rowsums = tatami::row_sums(&ref);
+    EXPECT_EQ(test_rowsums, rowsums);
+    auto colsums = tatami::column_sums(&ref);
+    EXPECT_EQ(test_colsums, colsums);
+}
+
+INSTANTIATE_TEST_CASE_P(
+    TileDbDenseMatrix,
+    TileDbDenseParallelTest,
+    ::testing::Values(0, 1, 2) // 0 = uncached, 1 = LRU cache, 2 = oracle cache.
+);

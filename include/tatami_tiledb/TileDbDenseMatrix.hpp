@@ -29,6 +29,10 @@ namespace tatami_tiledb {
  * Numeric dense matrix stored in a 2-dimensional TileDB array.
  * Chunks of data are loaded from file as needed by `tatami::Extractor` objects, with additional caching to avoid repeated reads from disk.
  * The size of cached chunks is determined by the extent of the tiles in the TileDB array.
+ *
+ * The TileDB library is thread-safe so no additional work is required to use this class in parallel code.
+ * Nonetheless, users can force all calls to TileDB to occur in serial by defining the `TATAMI_TILEDB_PARALLEL_LOCK` macro.
+ * This should be a function-like macro that accepts a function and executes it inside a user-defined serial section.
  */
 template<typename Value_, typename Index_, bool transpose_ = false>
 class TileDbDenseMatrix : public tatami::VirtualDenseMatrix<Value_, Index_> {
@@ -39,12 +43,20 @@ public:
      * @param options Further options.
      */
     TileDbDenseMatrix(std::string uri, std::string attribute, const TileDbOptions& options) : location(std::move(uri)), attr(std::move(attribute)) {
+#ifdef TATAMI_TILEDB_PARALLEL_LOCK
+        TATAMI_TILEDB_PARALLEL_LOCK([&]() -> void {
+#endif
+
         tiledb::Context ctx;
         tiledb::ArraySchema schema(ctx, location);
         if (schema.array_type() != TILEDB_DENSE) {
             throw std::runtime_error("TileDB array should be dense");
         }
         initialize(schema, options);
+
+#ifdef TATAMI_TILEDB_PARALLEL_LOCK
+        });
+#endif
     }
 
     /**
@@ -242,18 +254,13 @@ private:
 
     template<bool accrow_, typename ExtractType_>
     const Value_* extract_without_cache(Index_ i, Value_* buffer, const ExtractType_& extract_value, Index_ extract_length, Workspace<accrow_>& work) const {
-#ifndef TATAMI_TILEDB_PARALLEL_LOCK
-        #pragma omp critical
-        {
-#else
+#ifdef TATAMI_TILEDB_PARALLEL_LOCK
         TATAMI_TILEDB_PARALLEL_LOCK([&]() -> void {
 #endif
 
         extract_base<accrow_>(i, i + 1, buffer, extract_value, extract_length, work);
 
-#ifndef TATAMI_TILEDB_PARALLEL_LOCK
-        }
-#else
+#ifdef TATAMI_TILEDB_PARALLEL_LOCK
         });
 #endif
         return buffer;
@@ -276,10 +283,7 @@ private:
                 return Slab(work.cache_workspace.slab_size_in_elements);
             },
             /* populate = */ [&](const std::vector<std::pair<Index_, Index_> >& chunks_in_need, std::vector<Slab*>& chunk_data) -> void {
-#ifndef TATAMI_TILEDB_PARALLEL_LOCK
-                #pragma omp critical
-                {
-#else
+#ifdef TATAMI_TILEDB_PARALLEL_LOCK
                 TATAMI_TILEDB_PARALLEL_LOCK([&]() -> void {
 #endif
 
@@ -288,9 +292,7 @@ private:
                     this->extract_chunk<accrow_>(c.first, mydim, chunk_mydim, cache_target.data(), extract_value, extract_length, work);
                 }
 
-#ifndef TATAMI_TILEDB_PARALLEL_LOCK
-                }
-#else
+#ifdef TATAMI_TILEDB_PARALLEL_LOCK
                 });
 #endif
             }
@@ -310,20 +312,13 @@ private:
                 return Slab(work.cache_workspace.slab_size_in_elements);
             },
             /* populate = */ [&](Index_ id, Slab& chunk_contents) -> void {
-                Index_ actual_dim;
-
-#ifndef TATAMI_TILEDB_PARALLEL_LOCK
-                #pragma omp critical
-                {
-#else
+#ifdef TATAMI_TILEDB_PARALLEL_LOCK
                 TATAMI_TILEDB_PARALLEL_LOCK([&]() -> void {
 #endif
 
                 extract_chunk<accrow_>(id, mydim, chunk_mydim, chunk_contents.data(), extract_value, extract_length, work);
 
-#ifndef TATAMI_TILEDB_PARALLEL_LOCK
-                }
-#else
+#ifdef TATAMI_TILEDB_PARALLEL_LOCK
                 });
 #endif
             }
@@ -416,18 +411,13 @@ private:
     std::unique_ptr<tatami::Extractor<selection_, false, Value_, Index_> > populate(const tatami::Options& opt, Args_&&... args) const {
         std::unique_ptr<tatami::Extractor<selection_, false, Value_, Index_> > output;
 
-#ifndef TATAMI_TILEDB_PARALLEL_LOCK
-        #pragma omp critical
-        {
-#else
+#ifdef TATAMI_TILEDB_PARALLEL_LOCK
         TATAMI_TILEDB_PARALLEL_LOCK([&]() -> void {
 #endif
 
         output.reset(new Extractor<accrow_, selection_>(this, std::forward<Args_>(args)...));
 
-#ifndef TATAMI_TILEDB_PARALLEL_LOCK
-        }
-#else
+#ifdef TATAMI_TILEDB_PARALLEL_LOCK
         });
 #endif
 

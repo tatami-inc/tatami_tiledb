@@ -25,6 +25,13 @@ protected:
         return custom_opt;
     }
 
+    static auto uncached_options() {
+        tatami_tiledb::TileDbOptions opt;
+        opt.require_minimum_cache = false;
+        opt.maximum_cache_size = 0;
+        return opt;
+    }
+
     void dump(const std::pair<int, int>& tile_sizes) {
         fpath = tatami_test::temp_file_path("tatami-sparse-test");
         tatami_test::remove_file_path(fpath);
@@ -160,15 +167,7 @@ TEST_F(TileDbSparseUtilsTest, Preference) {
 /*************************************
  *************************************/
 
-class TileDbSparseAccessUncachedTest : public ::testing::TestWithParam<std::tuple<int, bool> >, public TileDbSparseMatrixTestMethods {
-protected:
-    static auto create_uncached_options() {
-        tatami_tiledb::TileDbOptions opt;
-        opt.require_minimum_cache = false;
-        opt.maximum_cache_size = 0;
-        return opt;
-    }
-};
+class TileDbSparseAccessUncachedTest : public ::testing::TestWithParam<std::tuple<int, bool> >, public TileDbSparseMatrixTestMethods {};
 
 TEST_P(TileDbSparseAccessUncachedTest, Basic) {
     auto param = GetParam();
@@ -177,7 +176,7 @@ TEST_P(TileDbSparseAccessUncachedTest, Basic) {
 
     dump(std::pair<int, int>(10, 10)); // exact chunk choice doesn't matter here.
 
-    tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, create_uncached_options());
+    tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, uncached_options());
     tatami::CompressedSparseRowMatrix<double, int> ref(NR, NC, contents.value, contents.index, contents.ptr);
 
     tatami_test::test_simple_column_access(&mat, &ref, FORWARD, JUMP);
@@ -191,7 +190,7 @@ TEST_P(TileDbSparseAccessUncachedTest, Transposed) {
 
     dump(std::pair<int, int>(10, 10)); // exact chunk choice doesn't matter here.
 
-    tatami_tiledb::TileDbSparseMatrix<double, int, true> mat(fpath, name, create_uncached_options());
+    tatami_tiledb::TileDbSparseMatrix<double, int, true> mat(fpath, name, uncached_options());
     std::shared_ptr<tatami::Matrix<double, int> > ptr(new tatami::CompressedSparseRowMatrix<double, int>(NR, NC, contents.value, contents.index, contents.ptr));
     tatami::DelayedTranspose<double, int> ref(std::move(ptr));
 
@@ -280,19 +279,6 @@ INSTANTIATE_TEST_CASE_P(
  *************************************/
 
 class TileDbSparseAccessMiscTest : public ::testing::TestWithParam<std::tuple<std::pair<int, int> > >, public TileDbSparseMatrixTestMethods {};
-
-TEST_P(TileDbSparseAccessMiscTest, Apply) {
-    // Putting it through its paces for correct parallelization via apply.
-    auto param = GetParam();
-    auto chunk_sizes = std::get<0>(param);
-    dump(chunk_sizes);
-
-    tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, custom_options());
-    tatami::CompressedSparseRowMatrix<double, int> ref(NR, NC, contents.value, contents.index, contents.ptr);
-
-    EXPECT_EQ(tatami::row_sums(&mat), tatami::row_sums(&ref));
-    EXPECT_EQ(tatami::column_sums(&mat), tatami::column_sums(&ref));
-}
 
 TEST_P(TileDbSparseAccessMiscTest, LruReuse) {
     // Check that the LRU cache works as expected when cache elements are
@@ -492,3 +478,70 @@ INSTANTIATE_TEST_CASE_P(
     )
 );
 
+/*************************************
+ *************************************/
+
+class TileDbSparseParallelTest : public ::testing::TestWithParam<int>, public TileDbSparseMatrixTestMethods {};
+
+TEST_P(TileDbSparseParallelTest, Basic) {
+    std::pair<int, int> chunk_sizes(19, 10);
+    dump(chunk_sizes);
+
+    auto mode = GetParam();
+    auto opt = (mode == 0 ? uncached_options() : custom_options());
+    tatami_tiledb::TileDbSparseMatrix<double, int> mat(fpath, name, opt);
+
+    std::vector<double> test_rowsums(NR);
+    tatami::parallelize([&](int t, int start, int len) -> void {
+        std::vector<double> buffer(NC);
+        int end = start + len;
+
+        if (mode == 2) {
+            auto wrk = tatami::consecutive_extractor<true, false>(&mat, start, len);
+            for (int i = start; i < end; ++i) {
+                auto ptr = wrk->fetch(i, buffer.data());
+                test_rowsums[i] = std::accumulate(ptr, ptr + NC, 0.0);
+            }
+
+        } else {
+            auto wrk = mat.dense_row();
+            for (int i = start; i < end; ++i) {
+                auto ptr = wrk->fetch(i, buffer.data());
+                test_rowsums[i] = std::accumulate(ptr, ptr + NC, 0.0);
+            }
+        }
+    }, NR, 3);
+
+    std::vector<double> test_colsums(NC);
+    tatami::parallelize([&](int t, int start, int len) -> void {
+        std::vector<double> buffer(NR);
+        int end = start + len;
+
+        if (mode == 2) {
+            auto wrk = tatami::consecutive_extractor<false, false>(&mat, start, len);
+            for (int i = start; i < end; ++i) {
+                auto ptr = wrk->fetch(i, buffer.data());
+                test_colsums[i] = std::accumulate(ptr, ptr + NR, 0.0);
+            }
+
+        } else {
+            auto wrk = mat.dense_column();
+            for (int i = start; i < end; ++i) {
+                auto ptr = wrk->fetch(i, buffer.data());
+                test_colsums[i] = std::accumulate(ptr, ptr + NR, 0.0);
+            }
+        }
+    }, NC, 3);
+
+    tatami::CompressedSparseRowMatrix<double, int> ref(NR, NC, contents.value, contents.index, contents.ptr);
+    auto rowsums = tatami::row_sums(&ref);
+    EXPECT_EQ(test_rowsums, rowsums);
+    auto colsums = tatami::column_sums(&ref);
+    EXPECT_EQ(test_colsums, colsums);
+}
+
+INSTANTIATE_TEST_CASE_P(
+    TileDbSparseMatrix,
+    TileDbSparseParallelTest,
+    ::testing::Values(0, 1, 2) // 0 = uncached, 1 = LRU cache, 2 = oracle cache.
+);
