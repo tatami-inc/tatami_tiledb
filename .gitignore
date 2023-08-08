@@ -1,5 +1,5 @@
 build
-tests/lib
+libtiledb
 tests/src/foo.cpp
 *.swp
 docs/html
