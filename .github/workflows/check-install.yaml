@@ -23,17 +23,23 @@ jobs:
         cmake -S . -B build -DTATAMI_CHUNKED_TESTS=OFF
         sudo cmake --install build
 
+    - uses: actions/cache@v3
+      id: cache
+      with:
+        path: libtiledb
+        key: tiledb-2.15.3
+
     - name: Install TileDB
       if: steps.cache.outputs.cache-hit != 'true'
       run: |
         sudo apt-get install wget
-        mkdir tests/lib
-        cd tests/lib
+        mkdir libtiledb
+        cd libtiledb
         wget https://github.com/TileDB-Inc/TileDB/releases/download/2.15.3/tiledb-linux-x86_64-2.15.3-689bea0.tar.gz -O tiledb.tar.gz
         tar -xvf tiledb.tar.gz
 
     - name: Configure the build
-      run: cmake -S . -B build -DTATAMI_HDF5_FETCH_EXTERN=OFF -DTATAMI_HDF5_TESTS=OFF
+      run: cmake -S . -B build -DTATAMI_TILEDB_FETCH_EXTERN=OFF -DTATAMI_TILEDB_TESTS=OFF -DCMAKE_PREFIX_PATH=libtiledb
 
     - name: Install the library
       run: sudo cmake --install build
@@ -49,4 +55,6 @@ jobs:
         find_package(tatami_tatami_tiledb)
         target_link_libraries(whee tatami::tatami_tiledb)
         EOF
-        cd _downstream && cmake -S . -B build
+
+        wd=$(pwd)
+        cd _downstream && cmake -S . -B build -DCMAKE_PREFIX_PATH=${wd}/libtiledb

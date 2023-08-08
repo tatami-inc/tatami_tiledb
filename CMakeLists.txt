@@ -19,6 +19,14 @@ endif()
 
 target_link_libraries(tatami_tiledb INTERFACE tatami::tatami_chunked)
 
+option(TATAMI_TILEDB_FIND_TILEDB "Try to find and link to TileDB for tatami_tiledb." ON)
+if(TATAMI_TILEDB_FIND_TILEDB)
+    find_package(TileDB)
+    if (TileDB_FOUND)
+        target_link_libraries(tatami_tiledb INTERFACE TileDB::tiledb_shared)
+    endif()
+endif()
+
 # Switch between include directories depending on whether the downstream is
 # using the build directly or is using the installed package.
 include(GNUInstallDirs)
