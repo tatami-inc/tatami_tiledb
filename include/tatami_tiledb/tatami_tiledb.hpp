@@ -1,10 +1,10 @@
 #ifndef TATAMI_TILEDB_HPP
 #define TATAMI_TILEDB_HPP
 
-#include "TileDbDenseMatrix.hpp"
-#include "TileDbSparseMatrix.hpp"
-#include "TileDbOptions.hpp"
-#include "make_TileDbMatrix.hpp"
+#include "TiledbDenseMatrix.hpp"
+#include "TiledbSparseMatrix.hpp"
+#include "TiledbOptions.hpp"
+#include "make_TiledbMatrix.hpp"
 
 /**
  * @file tatami_tiledb.hpp

@@ -2,7 +2,7 @@
 #define TATAMI_TILEDB_OPTIONS_HPP
 
 /**
- * @file TileDbOptions.hpp
+ * @file TiledbOptions.hpp
  * @brief Options for TileDB extraction.
  */
 
@@ -11,7 +11,7 @@ namespace tatami_tiledb {
 /**
  * @brief Options for TileDB extraction.
  */
-struct TileDbOptions {
+struct TiledbOptions {
     /**
      * Size of the in-memory cache in bytes.
      *

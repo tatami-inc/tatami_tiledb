@@ -4,18 +4,139 @@
 #include "tatami_chunked/tatami_chunked.hpp"
 #include <tiledb/tiledb>
 
-#include "TileDbOptions.hpp"
+#include "TiledbOptions.hpp"
 
 #include <string>
 #include <memory>
 #include <vector>
 
 /**
- * @file TileDbDenseMatrix.hpp
+ * @file TiledbDenseMatrix.hpp
  * @brief TileDB-backed dense matrix.
  */
 
 namespace tatami_tiledb {
+
+/**
+ * @cond
+ */
+namespace DenseMatrix_internal {
+
+// All TileDB-related members.
+struct Components{
+    Components(const std::string& location) : array(ctx, location, TILEDB_READ) {}
+    tiledb::Context ctx;
+    tiledb::Array array;
+};
+
+template<typename Index_, typename OutputValue_>
+void extract_block(const std::string& attr, bool tdb_row_is_target, Index_ cache_start, Index_ cache_length, Index_ block_start, Index_ block_length, OutputValue_* buffer, Components& comp) {
+    tiledb::Subarray subarray(work.ctx, work.array);
+    subarray.add_range(1 - static_cast<int>(tdb_row_is_target), cache_start, cache_start + cache_length - 1);
+    subarray.add_range(static_cast<int>(tdb_row_is_target), block_start, block_start + block_length - 1);
+
+    tiledb::Query query(work.ctx, work.array);
+    query.set_subarray(subarray)
+        .set_layout(tdb_row_is_target ? TILEDB_ROW_MAJOR : TILEDB_COL_MAJOR)
+        .set_data_buffer(attr, target, static_cast<size_t>(cache_length) * static_cast<size_t>(block_length)); // cast to avoid overflow.
+
+    if (query.submit() != tiledb::Query::Status::COMPLETE) {
+        throw std::runtime_error("failed to read dense data from TileDB");
+    }
+}
+
+template<typename Index_, typename OutputValue_>
+void extract_indices(const std::string& attr, bool tdb_row_is_target, Index_ cache_start, Index_ cache_length, const std::vector<Index_>& indices, OutputValue_* buffer, Components& comp) {
+    tiledb::Subarray subarray(work.ctx, work.array);
+    subarray.add_range(1 - static_cast<int>(tdb_row_is_target), cache_start, cache_start + cache_length - 1);
+    tatami::process_consecutive_indices(indices.data(), indices, [&](Index_ s, Index_ l) {
+        auto start = secondary_offset + s;
+        subarray.add_range(dimdex, start, start + l - 1);
+    });
+
+    tiledb::Query query(work.ctx, work.array);
+    query.set_subarray(subarray)
+        .set_layout(tdb_row_is_target ? TILEDB_ROW_MAJOR : TILEDB_COL_MAJOR)
+        .set_data_buffer(attr, target, static_cast<size_t>(cache_length) * static_cast<size_t>(block_length)); // cast to avoid overflow.
+
+    if (query.submit() != tiledb::Query::Status::COMPLETE) {
+        throw std::runtime_error("failed to read dense data from TileDB");
+    }
+}
+
+/********************
+ *** Core classes ***
+ ********************/
+
+inline void initialize(const std::string& location, std::unique_ptr<Components>& tdbcomp) {
+    serialize([&]() -> void {
+        tdbcomp.reset(new Components(locations));
+    });
+}
+
+inline void destroy(std::unique_ptr<Components>& tdbcomp) {
+    serialize([&]() -> void {
+        tdbcomp.reset();
+    });
+}
+
+template<bool oracle_, typename Index_>
+class SoloCore {
+public:
+    SoloCore(
+        const std::string& location,
+        const std::string& attribute, 
+        bool by_tdb_row,
+        [[maybe_unused]] tatami_chunked::ChunkDimensionStats<Index_> target_dim_stats, // only listed here for compatibility with the other constructors.
+        tatami::MaybeOracle<oracle_, Index_> oracle, 
+        [[maybe_unused]] Index_ non_target_length, 
+        [[maybe_unused]] const tatami_chunked::SlabCacheStats& slab_stats) :
+        my_attribute(attribute),
+        my_by_tdb_row(by_tdb_row),
+        my_oracle(std::move(oracle))
+    {
+        initialize(location, my_tdbcomp);
+    }
+
+    ~SoloCore() {
+        destroy(my_tdbcomp);
+    }
+
+private:
+    Components my_tdbcomp;
+    const std::string& my_attribute;
+    bool my_by_tdb_row;
+    tatami::MaybeOracle<oracle_, Index_> my_oracle;
+    typename std::conditional<oracle_, size_t, bool>::type my_counter = 0;
+
+public:
+    template<typename Value_>
+    const Value_* fetch_block(Index_ i, Index_ block_start, Index_ block_length, Value_* buffer) {
+        if constexpr(oracle_) {
+            i = my_oracle->get(my_counter++);
+        }
+        serialize([&](){
+            extract_block(my_by_tdb_row, i, static_cast<Index_>(1), block_start, block_length, buffer, *my_tdbcomp);
+        });
+        return buffer;
+    }
+
+    template<typename Value_>
+    const Value_* fetch_indices(Index_ i, const std::vector<Index_>& indices, Value_* buffer) {
+        if constexpr(oracle_) {
+            i = my_oracle->get(my_counter++);
+        }
+        serialize([&](){
+            extract_indices(my_by_tdb_row, i, static_cast<Index_>(1), indices, buffer, *my_tdbcomp);
+        });
+        return buffer;
+    }
+};
+
+}
+/**
+ * @endcond
+ */
 
 /**
  * @brief TileDB-backed dense matrix.
@@ -35,14 +156,14 @@ namespace tatami_tiledb {
  * This should be a function-like macro that accepts a function and executes it inside a user-defined serial section.
  */
 template<typename Value_, typename Index_, bool transpose_ = false>
-class TileDbDenseMatrix : public tatami::VirtualDenseMatrix<Value_, Index_> {
+class TiledbDenseMatrix : public tatami::VirtualDenseMatrix<Value_, Index_> {
 public:
     /**
      * @param uri File path (or some other appropriate location) of the TileDB array.
      * @param attribute Name of the attribute containing the data of interest.
      * @param options Further options.
      */
-    TileDbDenseMatrix(std::string uri, std::string attribute, const TileDbOptions& options) : location(std::move(uri)), attr(std::move(attribute)) {
+    TiledbDenseMatrix(std::string uri, std::string attribute, const TiledbOptions& options) : location(std::move(uri)), attr(std::move(attribute)) {
 #ifdef TATAMI_TILEDB_PARALLEL_LOCK
         TATAMI_TILEDB_PARALLEL_LOCK([&]() -> void {
 #endif
@@ -63,12 +184,12 @@ public:
      * @param uri File path (or some other appropriate location) of the TileDB array.
      * @param attribute Name of the attribute containing the data of interest.
      */
-    TileDbDenseMatrix(std::string uri, std::string attribute) : TileDbDenseMatrix(std::move(uri), std::move(attribute), TileDbOptions()) {}
+    TiledbDenseMatrix(std::string uri, std::string attribute) : TiledbDenseMatrix(std::move(uri), std::move(attribute), TiledbOptions()) {}
 
     /**
      * @cond
      */
-    TileDbDenseMatrix(tiledb::ArraySchema& schema, std::string uri, std::string attribute, const TileDbOptions& options) : location(std::move(uri)), attr(std::move(attribute)) {
+    TiledbDenseMatrix(tiledb::ArraySchema& schema, std::string uri, std::string attribute, const TiledbOptions& options) : location(std::move(uri)), attr(std::move(attribute)) {
         initialize(schema, options);
     }
     /**
@@ -76,7 +197,7 @@ public:
      */
 
 private:
-    void initialize(tiledb::ArraySchema& schema, const TileDbOptions& options) {
+    void initialize(tiledb::ArraySchema& schema, const TiledbOptions& options) {
         cache_size_in_elements = static_cast<double>(options.maximum_cache_size) / sizeof(Value_);
         require_minimum_cache = options.require_minimum_cache;
 
@@ -181,76 +302,7 @@ public:
         return cache_size_in_elements > 0;
     }
 
-    using tatami::Matrix<Value_, Index_>::dense_row;
 
-    using tatami::Matrix<Value_, Index_>::dense_column;
-
-    using tatami::Matrix<Value_, Index_>::sparse_row;
-
-    using tatami::Matrix<Value_, Index_>::sparse_column;
-
-public:
-    /*************************************************
-     * Defines the TileDB workspace and chunk cache. *
-     *************************************************/
-
-    typedef std::vector<Value_> Slab;
-
-    template<bool accrow_>
-    struct Workspace {
-        Workspace(const TileDbDenseMatrix* parent) : array(ctx, parent->location, TILEDB_READ) {}
-
-        void set_cache(const TileDbDenseMatrix* parent, Index_ other_dim) {
-            auto chunk_dim = parent->template get_target_chunk_dim<accrow_>();
-            cache_workspace = tatami_chunked::TypicalSlabCacheWorkspace<Index_, Slab>(chunk_dim, other_dim, parent->cache_size_in_elements, parent->require_minimum_cache);
-        }
-
-    public:
-        // TileDB members.
-        tiledb::Context ctx;
-        tiledb::Array array;
-
-        // Caching members
-        tatami_chunked::TypicalSlabCacheWorkspace<Index_, Slab> cache_workspace;
-    };
-
-private:
-    /********************************
-     * Defines extraction functions *
-     ********************************/
-
-    template<bool accrow_, typename ExtractType_>
-    void extract_base(Index_ primary_start, Index_ primary_end, Value_* target, const ExtractType_& extract_value, Index_ extract_length, Workspace<accrow_>& work) const {
-        tiledb::Subarray subarray(work.ctx, work.array);
-
-        constexpr int dimdex = (accrow_ != transpose_);
-        auto primary_offset = (dimdex == 1 ? first_offset : second_offset);
-        subarray.add_range(1 - dimdex, primary_offset + primary_start, primary_offset + primary_end - 1);
-
-        // Adding ranges along the other dimension.
-        auto secondary_offset = (dimdex == 1 ? second_offset : first_offset);
-        constexpr bool indexed = std::is_same<ExtractType_, std::vector<Index_> >::value;
-        if constexpr(indexed) {
-            tatami::process_consecutive_indices(extract_value.data(), extract_length,
-                [&](Index_ s, Index_ l) {
-                    auto start = secondary_offset + s;
-                    subarray.add_range(dimdex, start, start + l - 1);
-                }
-            );
-        } else {
-            auto secondary_start = secondary_offset + extract_value;
-            subarray.add_range(dimdex, secondary_start, secondary_start + extract_length - 1);
-        }
-
-        tiledb::Query query(work.ctx, work.array);
-        query.set_subarray(subarray)
-            .set_layout(dimdex == 1 ? TILEDB_ROW_MAJOR : TILEDB_COL_MAJOR)
-            .set_data_buffer(attr, target, (primary_end - primary_start) * extract_length);
-
-        if (query.submit() != tiledb::Query::Status::COMPLETE) {
-            throw std::runtime_error("failed to read dense data from TileDB");
-        }
-    }
 
     template<bool accrow_, typename ExtractType_>
     const Value_* extract_without_cache(Index_ i, Value_* buffer, const ExtractType_& extract_value, Index_ extract_length, Workspace<accrow_>& work) const {
@@ -355,14 +407,14 @@ private:
 
     template<bool accrow_, tatami::DimensionSelectionType selection_>
     struct Extractor : public tatami::Extractor<selection_, false, Value_, Index_> {
-        Extractor(const TileDbDenseMatrix* p) : parent(p), base(parent) {
+        Extractor(const TiledbDenseMatrix* p) : parent(p), base(parent) {
             if constexpr(selection_ == tatami::DimensionSelectionType::FULL) {
                 this->full_length = (accrow_ ? parent->ncol() : parent->nrow());
                 base.set_cache(parent, this->full_length);
             }
         }
 
-        Extractor(const TileDbDenseMatrix* p, Index_ start, Index_ length) : parent(p), base(parent) {
+        Extractor(const TiledbDenseMatrix* p, Index_ start, Index_ length) : parent(p), base(parent) {
             if constexpr(selection_ == tatami::DimensionSelectionType::BLOCK) {
                 this->block_start = start;
                 this->block_length = length;
@@ -370,7 +422,7 @@ private:
             }
         }
 
-        Extractor(const TileDbDenseMatrix* p, std::vector<Index_> idx) : parent(p), base(parent) {
+        Extractor(const TiledbDenseMatrix* p, std::vector<Index_> idx) : parent(p), base(parent) {
             if constexpr(selection_ == tatami::DimensionSelectionType::INDEX) {
                 this->index_length = idx.size();
                 indices = std::move(idx);
@@ -379,7 +431,7 @@ private:
         }
 
     protected:
-        const TileDbDenseMatrix* parent;
+        const TiledbDenseMatrix* parent;
         Workspace<accrow_> base;
         typename std::conditional<selection_ == tatami::DimensionSelectionType::INDEX, std::vector<Index_>, bool>::type indices;
 

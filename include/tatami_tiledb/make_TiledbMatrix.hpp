@@ -1,13 +1,13 @@
 #ifndef TATAMI_TILEDB_MAKE_TILEDBMATRIX_HPP
 #define TATAMI_TILEDB_MAKE_TILEDBMATRIX_HPP
 
-#include "TileDbDenseMatrix.hpp"
-#include "TileDbSparseMatrix.hpp"
+#include "TiledbDenseMatrix.hpp"
+#include "TiledbSparseMatrix.hpp"
 #include <memory>
 #include <tiledb/tiledb.h>
 
 /**
- * @file make_TileDbMatrix.hpp
+ * @file make_TiledbMatrix.hpp
  * @brief Make a TileDB-backed matrix.
  */
 
@@ -26,19 +26,19 @@ namespace tatami_tiledb {
  *
  * Create a `tatami::Matrix` representation from a 2-dimensional dense or sparse TileDB array.
  * This function will automatically choose the most appropriate representation based on the storage format.
- * For dense on-disk arrays, a `TileDbDenseMatrix` is constructed; otherwise a `TileDbSparseMatrix` is returned.
+ * For dense on-disk arrays, a `TiledbDenseMatrix` is constructed; otherwise a `TiledbSparseMatrix` is returned.
  */
 template<typename Value_, typename Index_, bool transpose_ = false>
-std::shared_ptr<tatami::Matrix<Value_, Index_> > make_TileDbMatrix(std::string uri, std::string attribute, const TileDbOptions& options) {
+std::shared_ptr<tatami::Matrix<Value_, Index_> > make_TiledbMatrix(std::string uri, std::string attribute, const TiledbOptions& options) {
     tiledb::Context ctx;
     tiledb::ArraySchema schema(ctx, uri);
 
     std::shared_ptr<tatami::Matrix<Value_, Index_> > output;
     auto atype = schema.array_type();
     if (atype == TILEDB_SPARSE) {
-        output.reset(new TileDbSparseMatrix<Value_, Index_, transpose_>(schema, std::move(uri), std::move(attribute), options));
+        output.reset(new TiledbSparseMatrix<Value_, Index_, transpose_>(schema, std::move(uri), std::move(attribute), options));
     } else if (atype == TILEDB_DENSE) {
-        output.reset(new TileDbDenseMatrix<Value_, Index_, transpose_>(schema, std::move(uri), std::move(attribute), options));
+        output.reset(new TiledbDenseMatrix<Value_, Index_, transpose_>(schema, std::move(uri), std::move(attribute), options));
     } else {
         throw std::runtime_error("unknown TileDB array type that is neither dense nor sparse");
     }
@@ -57,11 +57,11 @@ std::shared_ptr<tatami::Matrix<Value_, Index_> > make_TileDbMatrix(std::string u
  * @param attribute Name of the attribute containing the data of interest.
  *
  * Create a `tatami::Matrix` representation from a 2-dimensional dense or sparse TileDB array.
- * Unlike its overload, this function will use the default settings in `TileDbOptions`.
+ * Unlike its overload, this function will use the default settings in `TiledbOptions`.
  */
 template<typename Value_, typename Index_, bool transpose_ = false>
-std::shared_ptr<tatami::Matrix<Value_, Index_> > make_TileDbMatrix(std::string uri, std::string attribute) {
-    return make_TileDbMatrix<Value_, Index_, transpose_>(std::move(uri), std::move(attribute), TileDbOptions());
+std::shared_ptr<tatami::Matrix<Value_, Index_> > make_TiledbMatrix(std::string uri, std::string attribute) {
+    return make_TiledbMatrix<Value_, Index_, transpose_>(std::move(uri), std::move(attribute), TiledbOptions());
 }
 
 }
