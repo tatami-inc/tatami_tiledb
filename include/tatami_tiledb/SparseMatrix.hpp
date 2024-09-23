@@ -553,27 +553,35 @@ using SparseCore = typename std::conditional<solo_,
  ***************************/
 
 template<bool solo_, bool oracle_, typename Value_, typename Index_, typename CachedValue_>
-struct Full : public tatami::SparseExtractor<oracle_, Value_, Index_> {
-    Full(
+struct SparseFull : public tatami::SparseExtractor<oracle_, Value_, Index_> {
+    SparseFull(
         const Components& tdbcomp,
         const std::string& attribute, 
-        bool by_tdb_row,
+        const std::string& first_dimname, 
+        const std::string& second_dimname, 
+        bool row,
         tatami_chunked::ChunkDimensionStats<Index_> target_dim_stats,
         int target_offset,
         tatami::MaybeOracle<oracle_, Index_> oracle,
         Index_ non_target_dim,
         int non_target_offset,
-        const tatami_chunked::SlabCacheStats& slab_stats) :
+        const tatami_chunked::SlabCacheStats& slab_stats,
+        bool needs_value,
+        bool needs_index) :
         my_core(
             tdbcomp,
             attribute,
-            by_tdb_row,
+            first_dimname,
+            second_dimname,
+            row,
             std::move(target_dim_stats),
             target_offset,
             std::move(oracle),
             non_target_dim, 
             non_target_offset,
-            slab_stats
+            slab_stats,
+            needs_value,
+            needs_index
         ),
         my_non_target_dim(non_target_dim)
     {}

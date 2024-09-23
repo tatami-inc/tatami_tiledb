@@ -139,7 +139,6 @@ public:
         [[maybe_unused]] tatami_chunked::ChunkDimensionStats<Index_> target_dim_stats, // only listed here for compatibility with the other constructors.
         int target_offset,
         tatami::MaybeOracle<oracle_, Index_> oracle, 
-        [[maybe_unused]] Index_ non_target_length, 
         int non_target_offset,
         [[maybe_unused]] const tatami_chunked::SlabCacheStats& slab_stats) :
         my_tdbcomp(tdbcomp),
@@ -195,7 +194,6 @@ public:
         tatami_chunked::ChunkDimensionStats<Index_> target_dim_stats, 
         int target_offset,
         [[maybe_unused]] tatami::MaybeOracle<false, Index_> oracle, // for consistency with the oracular version.
-        Index_ non_target_length, 
         int non_target_offset,
         const tatami_chunked::SlabCacheStats& slab_stats) :
         my_tdbcomp(tdbcomp),
@@ -203,7 +201,6 @@ public:
         my_row(row),
         my_dim_stats(std::move(target_dim_stats)),
         my_target_offset(target_offset),
-        my_non_target_length(non_target_length),
         my_non_target_offset(non_target_offset),
         my_factory(slab_stats), 
         my_cache(slab_stats.max_slabs_in_cache)
@@ -216,7 +213,6 @@ private:
 
     tatami_chunked::ChunkDimensionStats<Index_> my_dim_stats;
     int my_target_offset;
-    Index_ my_non_target_length;
     int my_non_target_offset;
 
     tatami_chunked::DenseSlabFactory<CachedValue_> my_factory;
@@ -225,7 +221,7 @@ private:
 
 private:
     template<typename Value_, class Extract_>
-    void fetch_raw(Index_ i, Value_* buffer, Extract_ extract) {
+    void fetch_raw(Index_ i, Value_* buffer, size_t non_target_length, Extract_ extract) {
         Index_ chunk = i / my_dim_stats.chunk_length;
         Index_ index = i % my_dim_stats.chunk_length;
 
@@ -242,14 +238,14 @@ private:
             }
         );
 
-        auto ptr = info.data + static_cast<size_t>(my_non_target_length) * static_cast<size_t>(index); // cast to size_t to avoid overflow
-        std::copy_n(ptr, my_non_target_length, buffer);
+        auto ptr = info.data + non_target_length * static_cast<size_t>(index); // cast to size_t to avoid overflow
+        std::copy_n(ptr, non_target_length, buffer);
     }
 
 public:
     template<typename Value_>
     const Value_* fetch_block(Index_ i, Index_ block_start, Index_ block_length, Value_* buffer) {
-        fetch_raw(i, buffer, [&](Index_ start, Index_ length, CachedValue_* buf) {
+        fetch_raw(i, buffer, block_length, [&](Index_ start, Index_ length, CachedValue_* buf) {
             extract_block(my_attribute, my_row, my_target_offset, start, length, my_non_target_offset, block_start, block_length, buf, my_tdbcomp);
         });
         return buffer;
@@ -257,7 +253,7 @@ public:
 
     template<typename Value_>
     const Value_* fetch_indices(Index_ i, const std::vector<Index_>& indices, Value_* buffer) {
-        fetch_raw(i, buffer, [&](Index_ start, Index_ length, CachedValue_* buf) {
+        fetch_raw(i, buffer, indices.size(), [&](Index_ start, Index_ length, CachedValue_* buf) {
             extract_indices(my_attribute, my_row, my_target_offset, start, length, my_non_target_offset, indices, buf, my_tdbcomp);
         });
         return buffer;
@@ -273,7 +269,6 @@ struct OracularCore {
         tatami_chunked::ChunkDimensionStats<Index_> target_dim_stats,
         int target_offset,
         tatami::MaybeOracle<true, Index_> oracle, 
-        Index_ non_target_length, 
         int non_target_offset,
         const tatami_chunked::SlabCacheStats& slab_stats) :
         my_tdbcomp(tdbcomp),
@@ -281,7 +276,6 @@ struct OracularCore {
         my_row(row),
         my_dim_stats(std::move(target_dim_stats)),
         my_target_offset(target_offset),
-        my_non_target_length(non_target_length),
         my_non_target_offset(non_target_offset),
         my_factory(slab_stats), 
         my_cache(std::move(oracle), slab_stats.max_slabs_in_cache)
@@ -294,7 +288,6 @@ private:
 
     tatami_chunked::ChunkDimensionStats<Index_> my_dim_stats;
     int my_target_offset;
-    Index_ my_non_target_length;
     int my_non_target_offset;
 
     tatami_chunked::DenseSlabFactory<CachedValue_> my_factory;
@@ -303,7 +296,7 @@ private:
 
 public:
     template<typename Value_, class Extract_>
-    void fetch_raw([[maybe_unused]] Index_ i, Value_* buffer, Extract_ extract) {
+    void fetch_raw([[maybe_unused]] Index_ i, Value_* buffer, size_t non_target_length, Extract_ extract) {
         auto info = my_cache.next(
             /* identify = */ [&](Index_ current) -> std::pair<Index_, Index_> {
                 return std::pair<Index_, Index_>(current / my_dim_stats.chunk_length, current % my_dim_stats.chunk_length);
@@ -321,14 +314,14 @@ public:
             }
         );
 
-        auto ptr = info.first->data + static_cast<size_t>(my_non_target_length) * static_cast<size_t>(info.second); // cast to size_t to avoid overflow
-        std::copy_n(ptr, my_non_target_length, buffer);
+        auto ptr = info.first->data + non_target_length * static_cast<size_t>(info.second); // cast to size_t to avoid overflow
+        std::copy_n(ptr, non_target_length, buffer);
     }
 
 public:
     template<typename Value_>
     const Value_* fetch_block(Index_ i, Index_ block_start, Index_ block_length, Value_* buffer) {
-        fetch_raw(i, buffer, [&](Index_ start, Index_ length, CachedValue_* buf) {
+        fetch_raw(i, buffer, block_length, [&](Index_ start, Index_ length, CachedValue_* buf) {
             extract_block(my_attribute, my_row, my_target_offset, start, length, my_non_target_offset, block_start, block_length, buf, my_tdbcomp);
         });
         return buffer;
@@ -336,7 +329,7 @@ public:
 
     template<typename Value_>
     const Value_* fetch_indices(Index_ i, const std::vector<Index_>& indices, Value_* buffer) {
-        fetch_raw(i, buffer, [&](Index_ start, Index_ length, CachedValue_* buf) {
+        fetch_raw(i, buffer, indices.size(), [&](Index_ start, Index_ length, CachedValue_* buf) {
             extract_indices(my_attribute, my_row, my_target_offset, start, length, my_non_target_offset, indices, buf, my_tdbcomp);
         });
         return buffer;
@@ -375,7 +368,6 @@ struct Full : public tatami::DenseExtractor<oracle_, Value_, Index_> {
             std::move(target_dim_stats),
             target_offset,
             std::move(oracle),
-            non_target_dim, 
             non_target_offset,
             slab_stats
         ),
@@ -411,7 +403,6 @@ struct Block : public tatami::DenseExtractor<oracle_, Value_, Index_> {
             std::move(target_dim_stats),
             target_offset,
             std::move(oracle),
-            block_length, 
             non_target_offset,
             slab_stats
         ),
@@ -447,7 +438,6 @@ struct Index : public tatami::DenseExtractor<oracle_, Value_, Index_> {
             std::move(target_dim_stats),
             target_offset,
             std::move(oracle),
-            indices_ptr->size(), 
             non_target_offset,
             slab_stats
         ),
