@@ -18,6 +18,10 @@ include(CheckIncludeFiles)
 check_include_files(filesystem HAVE_CXX_FS)
 
 set(CODE_COVERAGE OFF CACHE BOOL "Enable coverage testing")
+set(DO_CODE_COVERAGE OFF)
+if(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set(DO_CODE_COVERAGE ON)
+endif()
 
 include(GoogleTest)
 
@@ -34,7 +38,9 @@ macro(create_test target)
         target_link_libraries(${target} stdc++fs)
     endif()
 
-    if(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
+
+    if(DO_CODE_COVERAGE)
         target_compile_options(${target} PRIVATE -O0 -g --coverage)
         target_link_options(${target} PRIVATE --coverage)
     endif()
@@ -43,10 +49,3 @@ macro(create_test target)
 endmacro()
 
 create_test(libtest)
-
-# Checking whether to test OpenMP support. 
-find_package(OpenMP)
-if (OpenMP_FOUND)
-    create_test(omptest)
-    target_link_libraries(omptest OpenMP::OpenMP_CXX)
-endif()

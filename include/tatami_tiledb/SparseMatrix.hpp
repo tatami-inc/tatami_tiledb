@@ -1,21 +1,669 @@
 #ifndef TATAMI_TILEDB_SPARSE_MATRIX_HPP
 #define TATAMI_TILEDB_SPARSE_MATRIX_HPP
 
-#include "tatami/tatami.hpp"
+#include "tatami_chunked/tatami_chunked.hpp"
 #include <tiledb/tiledb>
 
-#include "TileDbOptions.hpp"
+#include "serialize.hpp"
 
 #include <string>
 #include <memory>
 #include <vector>
+#include <stdexcept>
 
 /**
- * @file TileDbSparseMatrix.hpp
+ * @file SparseMatrix.hpp
  * @brief TileDB-backed sparse matrix.
  */
 
 namespace tatami_tiledb {
+
+/**
+ * @brief Options for sparse TileDB extraction.
+ */
+struct SparseMatrixOptions {
+    /**
+     * Size of the in-memory cache in bytes.
+     *
+     * We cache all tiles required to read a row/column during a `tatami::SparseExtractor::fetch()` or `tatami::SparseExtractor::Fetch()` call.
+     * This allows us to re-use the cached tiles when adjacent rows/columns are requested, rather than re-reading them from disk.
+     *
+     * Larger caches improve access speed at the cost of memory usage.
+     * Small values may be ignored if `require_minimum_cache` is `true`.
+     */
+    size_t maximum_cache_size = 100000000;
+
+    /**
+     * Whether to automatically enforce a minimum size for the cache, regardless of `maximum_cache_size`.
+     * This minimum is chosen to ensure that all tiles overlapping one row (or a slice/subset thereof) can be retained in memory,
+     * so that the same tiles are not repeatedly re-read from disk when iterating over consecutive rows/columns of the matrix.
+     */
+    bool require_minimum_cache = true;
+};
+
+/**
+ * @cond
+ */
+namespace SparseMatrix_internal {
+
+template<typename CachedValue_>
+struct Workspace {
+    std::vector<CachedValue_> values;
+    
+    // We use 'int' instead of CachedIndex_ as we don't know the
+    // maximum range of the indices on-disk after we add an offset.
+    std::vector<int> target_indices;
+    std::vector<int> non_target_indices;
+};
+
+// All TileDB-related members.
+struct Components{
+    Components(const std::string& location) : array(ctx, location, TILEDB_READ) {}
+    tiledb::Context ctx;
+    tiledb::Array array;
+};
+
+template<bool has_value_, bool has_index_, class Workspace_, class Slab_>
+void populate_block_cache(size_t result_num, Workspace_& work, Slab_& cache, int subtract_target, int subtract_non_target) {
+    for (size_t r = 0; r < result_num; ++r) {
+        auto i = work.target_indices[r] - subtract_target;
+        auto& current = cache.number[i];
+        if constexpr(has_value_) {
+            cache.values[i][current] = work.values[r];
+        }
+        if constexpr(has_index_) {
+            cache.indices[i][current] = work.non_target_indices[r] - subtract_non_target;
+        }
+        ++current;
+    }
+}
+
+template<typename Index_, class Workspace_, class Slab_>
+void execute_query(
+    const std::string& attribute,
+    const std::string& first_dimname,
+    const std::string& second_dimname,
+    bool row, 
+    Index_ target_length,
+    int subtract_target,
+    int subtract_non_target,
+    Workspace& work,
+    Slab_& cache,
+    const Components& comp,
+    tiledb::Subarray& subarray)
+{
+    tiledb::Query query(comp.ctx, comp.array);
+    query.set_subarray(subarray)
+        .set_data_buffer(attribute, work.values);
+
+    // Don't extract indices directly into the cache, because the reported
+    // indices may be out of range of CachedIndex_ due to TileDB's offsets. 
+    if (row) {
+        query.set_data_buffer(first_dimname, work.target_indices)
+            .set_layout(TILEDB_ROW_MAJOR);
+        if (!cache.indices.empty()) {
+            query.set_data_buffer(second_dimname, work.non_target_indices)
+        }
+    } else {
+        query.set_data_buffer(second_dimname, work.target_indices)
+            .set_layout(TILEDB_COL_MAJOR);
+        if (!cache.indices.empty()) {
+            query.set_data_buffer(first_dimname, work.non_target_indices)
+        }
+    }
+
+    if (query.submit() != tiledb::Query::Status::COMPLETE) {
+        throw std::runtime_error("failed to read sparse data from TileDB");
+    }
+
+    size_t result_num = query.result_buffer_elements()[attribute].second;
+    std::fill_n(cache.number, target_length, 0);
+
+    // Better be in CSR (if row = true) or CSC (otherwise) order.
+    if (cache.indices.empty() && cache.values.empty()) { 
+        populate_block_cache<false, false>(result_num, work, cache, subtract_target, subtract_non_target);
+    } else if (cache.indices.empty()) {
+        populate_block_cache<true, false>(result_num, work, cache, subtract_target, subtract_non_target);
+    } else if (cache.values.empty()) { 
+        populate_block_cache<false, true>(result_num, work, cache, subtract_target, subtract_non_target);
+    } else {
+        populate_block_cache<true, true>(result_num, work, cache, subtract_target, subtract_non_target);
+    }
+
+    for (Index_ i = 1; i < target_length; ++i) {
+        cache.number[i] += cache.number[i-1];
+    }
+}
+
+template<typename Index_, class Workspace_, class Slab_>
+void extract_block(
+    const std::string& attribute,
+    const std::string& first_dimname,
+    const std::string& second_dimname,
+    bool row,
+    int target_offset,
+    Index_ target_start,
+    Index_ target_length,
+    int non_target_offset,
+    Index_ block_start,
+    Index_ block_length,
+    Workspace_& work,
+    Slab_& cache,
+    const Components& comp) 
+{
+    int rowdex = row;
+
+    tiledb::Subarray subarray(comp.ctx, comp.array);
+    auto actual_target_start = target_offset + target_start; 
+    subarray.add_range(1 - rowdex, actual_target_start, actual_target_start + target_length - 1);
+
+    auto actual_non_target_start = non_target_offset + block_start; 
+    subarray.add_range(rowdex, actual_non_target_start, actual_non_target_start + block_length - 1);
+
+    execute_query(attribute, first_dimname, second_dimname, row, target_length, actual_target_start, non_target_offset, work, comp, subarray);
+}
+
+template<typename Index_, class Workspace_, class Slab_>
+void extract_indices(
+    const std::string& attribute,
+    const std::string& first_dimname,
+    const std::string& second_dimname,
+    bool row,
+    int target_offset,
+    Index_ target_start,
+    Index_ target_length,
+    int non_target_offset,
+    const std::vector<Index_>& indices,
+    Workspace_& work,
+    Slab_& cache,
+    const Components& comp) 
+{
+    int rowdex = row;
+
+    tiledb::Subarray subarray(comp.ctx, comp.array);
+    auto actual_target_start = target_offset + target_start; 
+    subarray.add_range(1 - rowdex, actual_target_start, actual_target_start + target_length - 1);
+
+    tatami::process_consecutive_indices<Index_>(indices.data(), indices.size(), [&](Index_ s, Index_ l) {
+        auto actual_non_target_start = non_target_offset + s;
+        subarray.add_range(rowdex, actual_non_target_start, actual_non_target_start + l - 1);
+    });
+
+    execute_query(attribute, first_dimname, second_dimname, row, target_length, actual_target_start, non_target_offset, work, comp, subarray);
+}
+
+/********************
+ *** Core classes ***
+ ********************/
+
+template<bool oracle_, typename Index_, typename CachedValue_, typename CachedIndex_>
+class SoloCore {
+public:
+    SoloCore(
+        const Components& tdbcomp,
+        const std::string& attribute, 
+        const std::string& first_dimname, 
+        const std::string& second_dimname, 
+        bool row,
+        [[maybe_unused]] tatami_chunked::ChunkDimensionStats<Index_> target_dim_stats, // only listed here for compatibility with the other constructors.
+        int target_offset,
+        tatami::MaybeOracle<oracle_, Index_> oracle, 
+        [[maybe_unused]] Index_ non_target_length, 
+        int non_target_offset,
+        [[maybe_unused]] const tatami_chunked::SlabCacheStats& slab_stats,
+        bool needs_value,
+        bool needs_index) :
+        my_tdbcomp(tdbcomp),
+        my_attribute(attribute),
+        my_first_dimname(first_dimname),
+        my_second_dimname(second_dimname),
+        my_row(row),
+        my_target_offset(target_offset),
+        my_non_target_offset(non_target_offset),
+        my_oracle(std::move(oracle)),
+        my_needs_value(needs_value),
+        my_needs_index(needs_index)
+    {
+        if (my_needs_value) {
+            my_stub_slab.values.resize(1);
+        }
+        if (my_needs_index) {
+            my_stub_slab.indices.resize(1);
+        }
+    }
+
+private:
+    const Components& my_tdbcomp;
+    const std::string& my_attribute;
+    const std::string& my_first_dimname;
+    const std::string& my_second_dimname;
+    bool my_row;
+
+    int my_target_offset;
+    int my_non_target_offset;
+
+    tatami::MaybeOracle<oracle_, Index_> my_oracle;
+    typename std::conditional<oracle_, size_t, bool>::type my_counter = 0;
+
+    bool my_needs_value;
+    bool my_needs_index;
+
+    Workspace<CachedValue_> my_work;
+    std::vector<CachedValue_> vbuffer;
+    std::vector<CachedIndex_> ibuffer;
+    CachedIndex_ count = 0;
+
+    typedef typename tatami_chunked::SparseSlabFactory<CachedValue_, CachedIndex_>::Slab Slab;
+    Slab my_stub_slab;
+
+private:
+    template<class Extract_>
+    void fetch_raw(Index_ i, size_t non_target_length, Extract_ extract) {
+        if constexpr(oracle_) {
+            i = my_oracle->get(my_counter++);
+        }
+
+        placeholder.number = &count;
+        if (my_needs_value) {
+            vbuffer.resize(non_target_length);
+            placeholder.value[0] = vbuffer.data();
+        }
+        if (my_needs_index) {
+            ibuffer.resize(non_target_length);
+            placeholder.index[0] = ibuffer.data();
+        }
+
+        serialize([&](){
+            extract(i);
+        });
+    }
+
+public:
+    std::pair<const Slab*, Index_> fetch_block(Index_ i, Index_ block_start, Index_ block_length) {
+        fetch_raw(i, block_length, [&](Index_ i0) {
+            extract_block(
+                my_attribute,
+                my_first_dimname,
+                my_second_dimname,
+                my_row,
+                my_target_offset,
+                i0,
+                static_cast<Index_>(1),
+                my_non_target_offset,
+                block_start,
+                block_length,
+                my_work,
+                my_stub_slab,
+                my_tdbcomp
+            );
+        });
+        return std::make_pair(&my_stub_slab, 0);
+    }
+
+    std::pair<const Slab*, Index_> fetch_indices(Index_ i, const std::vector<Index_>& indices) {
+        fetch_raw(i, indices.size(), [&](Index_ i0) {
+            extract_indices(
+                my_attribute,
+                my_first_dimname,
+                my_second_dimname,
+                my_row,
+                my_target_offset,
+                i0,
+                static_cast<Index_>(1),
+                my_non_target_offset,
+                indices,
+                my_work,
+                my_stub_slab,
+                my_tdbcomp
+            );
+        });
+        return std::make_pair(&my_stub_slab, 0);
+    }
+};
+
+template<typename Index_, typename CachedValue_>
+class MyopicCore {
+public:
+    MyopicCore(
+        const Components& tdbcomp,
+        const std::string& attribute, 
+        const std::string& first_dimname, 
+        const std::string& second_dimname, 
+        bool row,
+        tatami_chunked::ChunkDimensionStats<Index_> target_dim_stats, 
+        int target_offset,
+        [[maybe_unused]] tatami::MaybeOracle<false, Index_> oracle, // for consistency with the oracular version.
+        Index_ non_target_length, 
+        int non_target_offset,
+        const tatami_chunked::SlabCacheStats& slab_stats, 
+        bool needs_value,
+        bool needs_index) :
+        my_tdbcomp(tdbcomp),
+        my_attribute(attribute),
+        my_first_dimname(first_dimname),
+        my_second_dimname(second_dimname),
+        my_row(row),
+        my_target_dim_stats(std::move(target_dim_stats)),
+        my_target_offset(target_offset),
+        my_non_target_length(non_target_length),
+        my_non_target_offset(non_target_offset),
+        my_factory(my_target_dim_stats.dimension_extent, non_target_length, slab_stats, needs_value, needs_index), 
+        my_cache(slab_stats.max_slabs_in_cache)
+    {}
+
+private:
+    const Components& my_tdbcomp;
+    const std::string& my_attribute;
+    const std::string& my_first_dimname;
+    const std::string& my_second_dimname;
+    bool my_row;
+
+    tatami_chunked::ChunkDimensionStats<Index_> my_target_dim_stats;
+    int my_target_offset;
+    Index_ my_non_target_length;
+    int my_non_target_offset;
+
+    Workspace<CachedValue_> my_work;
+    tatami_chunked::SparseSlabFactory<CachedValue_, CachedIndex_> my_factory;
+    typedef decltype(my_factory)::Slab Slab;
+    tatami_chunked::LruSlabCache<Index_, Slab> my_cache;
+
+public:
+    template<class Extract_>
+    std::pair<const Slab*, Index_> fetch_raw(Index_ i, Extract_ extract) {
+        Index_ chunk = i / my_target_dim_stats.chunk_length;
+        Index_ index = i % my_target_dim_stats.chunk_length;
+
+        const auto& info = my_cache.find(
+            chunk, 
+            /* create = */ [&]() -> Slab {
+                return my_factory.create();
+            },
+            /* populate = */ [&](Index_ id, Slab& contents) -> void {
+                serialize([&]() {
+                    auto curdim = tatami_chunked::get_chunk_length(my_target_dim_stats, id);
+                    extract(id * my_target_dim_stats.chunk_length, curdim, contents);
+                });
+            }
+        );
+
+        return std::make_pair(&info, index);
+    }
+
+public:
+    std::pair<const Slab*, Index_> fetch_block(Index_ i, Index_ block_start, Index_ block_length) {
+        return fetch_raw(i, [&](Index_ start, Index_ len, Slab& contents) {
+            extract_block(
+                my_attribute,
+                my_first_dimname,
+                my_second_dimname,
+                my_row,
+                my_target_offset,
+                start,
+                len,
+                my_non_target_offset,
+                block_start,
+                block_length,
+                my_work,
+                contents,
+                my_tdbcomp
+            );
+        });
+    }
+
+    std::pair<const Slab*, Index_> fetch_indices(Index_ i, const std::vector<Index_>& indices) {
+        return fetch_raw(i, [&](Index_ start, Index_ len, Slab& contents) {
+            extract_indices(
+                my_attribute,
+                my_first_dimname,
+                my_second_dimname,
+                my_row,
+                my_target_offset,
+                start,
+                len,
+                my_non_target_offset,
+                indices,
+                my_work,
+                contents,
+                my_tdbcomp
+            );
+        });
+    }
+};
+
+template<typename Index_, typename CachedValue_>
+struct OracularCore {
+    OracularCore(
+        const Components& tdbcomp,
+        const std::string& attribute, 
+        const std::string& first_dimname, 
+        const std::string& second_dimname, 
+        bool row,
+        tatami_chunked::ChunkDimensionStats<Index_> target_dim_stats,
+        int target_offset,
+        tatami::MaybeOracle<true, Index_> oracle, 
+        Index_ non_target_length, 
+        int non_target_offset,
+        const tatami_chunked::SlabCacheStats& slab_stats,
+        bool needs_value,
+        bool needs_index) :
+        my_tdbcomp(tdbcomp),
+        my_attribute(attribute),
+        my_first_dimname(first_dimname),
+        my_second_dimname(second_dimname),
+        my_row(row),
+        my_target_dim_stats(std::move(target_dim_stats)),
+        my_target_offset(target_offset),
+        my_non_target_length(non_target_length),
+        my_non_target_offset(non_target_offset),
+        my_factory(my_target_dim_stats.dimension_extent, non_target_length, slab_stats, needs_value, needs_index), 
+        my_cache(std::move(oracle), slab_stats.max_slabs_in_cache)
+    {}
+
+private:
+    const Components& my_tdbcomp;
+    const std::string& my_attribute;
+    const std::string& my_first_dimname;
+    const std::string& my_second_dimname;
+    bool my_row;
+
+    tatami_chunked::ChunkDimensionStats<Index_> my_target_dim_stats;
+    int my_target_offset;
+    Index_ my_non_target_length;
+    int my_non_target_offset;
+
+    Workspace<CachedValue_> my_work;
+    tatami_chunked::SparseSlabFactory<CachedValue_> my_factory;
+    typedef typename decltype(my_factory)::Slab Slab;
+    tatami_chunked::OracularSlabCache<Index_, Index_, Slab> my_cache;
+
+private:
+    template<class Extract_>
+    std::pair<const Slab*, Index_> fetch_raw([[maybe_unused]] Index_ i, Extract_ extract) {
+        return info = my_cache.next(
+            /* identify = */ [&](Index_ current) -> std::pair<Index_, Index_> {
+                return std::pair<Index_, Index_>(current / my_target_dim_stats.chunk_length, current % my_target_dim_stats.chunk_length);
+            }, 
+            /* create = */ [&]() -> Slab {
+                return my_factory.create();
+            },
+            /* populate = */ [&](const std::vector<std::pair<Index_, Slab*> >& chunks) -> void {
+                serialize([&]() -> void {
+                    for (const auto& c : chunks) {
+                        auto curdim = tatami_chunked::get_chunk_length(my_dim_stats, c.first);
+                        extract(c.first * my_dim_stats.chunk_length, curdim, c.second->data);
+                    }
+                });
+            }
+        );
+    }
+
+public:
+    std::pair<const Slab*, Index_> fetch_block(Index_ i, Index_ block_start, Index_ block_length) {
+        return fetch_raw(i, [&](Index_ start, Index_ len, Slab& contents) {
+            extract_block(
+                my_attribute,
+                my_first_dimname,
+                my_second_dimname,
+                my_row,
+                my_target_offset,
+                start,
+                len,
+                my_non_target_offset,
+                block_start,
+                block_length,
+                my_work,
+                contents,
+                my_tdbcomp
+            );
+        });
+    }
+
+    std::pair<const Slab*, Index_> fetch_indices(Index_ i, const std::vector<Index_>& indices) {
+        return fetch_raw(i, [&](Index_ start, Index_ len, Slab& contents) {
+            extract_indices(
+                my_attribute,
+                my_first_dimname,
+                my_second_dimname,
+                my_row,
+                my_target_offset,
+                start,
+                len,
+                my_non_target_offset,
+                indices,
+                my_work,
+                contents,
+                my_tdbcomp
+            );
+        });
+    }
+};
+
+template<bool solo_, bool oracle_, typename Index_, typename CachedValue_>
+using SparseCore = typename std::conditional<solo_, 
+      SoloCore<oracle_, Index_>,
+      typename std::conditional<oracle_,
+          OracularCore<Index_, CachedValue_>,
+          MyopicCore<Index_, CachedValue_>
+      >::type
+>::type;
+
+/***************************
+ *** Concrete subclasses ***
+ ***************************/
+
+template<bool solo_, bool oracle_, typename Value_, typename Index_, typename CachedValue_>
+struct Full : public tatami::SparseExtractor<oracle_, Value_, Index_> {
+    Full(
+        const Components& tdbcomp,
+        const std::string& attribute, 
+        bool by_tdb_row,
+        tatami_chunked::ChunkDimensionStats<Index_> target_dim_stats,
+        int target_offset,
+        tatami::MaybeOracle<oracle_, Index_> oracle,
+        Index_ non_target_dim,
+        int non_target_offset,
+        const tatami_chunked::SlabCacheStats& slab_stats) :
+        my_core(
+            tdbcomp,
+            attribute,
+            by_tdb_row,
+            std::move(target_dim_stats),
+            target_offset,
+            std::move(oracle),
+            non_target_dim, 
+            non_target_offset,
+            slab_stats
+        ),
+        my_non_target_dim(non_target_dim)
+    {}
+
+    const Value_* fetch(Index_ i, Value_* buffer) {
+        return my_core.fetch_block(i, 0, my_non_target_dim, buffer);
+    }
+
+private:
+    SparseCore<solo_, oracle_, Index_, CachedValue_> my_core;
+    Index_ my_non_target_dim;
+};
+
+template<bool solo_, bool oracle_, typename Value_, typename Index_, typename CachedValue_> 
+struct Block : public tatami::SparseExtractor<oracle_, Value_, Index_> {
+    Block(
+        const Components& tdbcomp,
+        const std::string& attribute, 
+        bool by_tdb_row,
+        tatami_chunked::ChunkDimensionStats<Index_> target_dim_stats,
+        int target_offset, 
+        tatami::MaybeOracle<oracle_, Index_> oracle,
+        Index_ block_start,
+        Index_ block_length,
+        int non_target_offset, 
+        const tatami_chunked::SlabCacheStats& slab_stats) :
+        my_core( 
+            tdbcomp,
+            attribute,
+            by_tdb_row,
+            std::move(target_dim_stats),
+            target_offset,
+            std::move(oracle),
+            block_length, 
+            non_target_offset,
+            slab_stats
+        ),
+        my_block_start(block_start),
+        my_block_length(block_length)
+    {}
+
+    const Value_* fetch(Index_ i, Value_* buffer) {
+        return my_core.fetch_block(i, my_block_start, my_block_length, buffer);
+    }
+
+private:
+    SparseCore<solo_, oracle_, Index_, CachedValue_> my_core;
+    Index_ my_block_start, my_block_length;
+};
+
+template<bool solo_, bool oracle_, typename Value_, typename Index_, typename CachedValue_>
+struct Index : public tatami::SparseExtractor<oracle_, Value_, Index_> {
+    Index(
+        const Components& tdbcomp,
+        const std::string& attribute, 
+        bool by_tdb_row,
+        tatami_chunked::ChunkDimensionStats<Index_> target_dim_stats,
+        int target_offset, 
+        tatami::MaybeOracle<oracle_, Index_> oracle,
+        tatami::VectorPtr<Index_> indices_ptr,
+        int non_target_offset, 
+        const tatami_chunked::SlabCacheStats& slab_stats) :
+        my_core(
+            tdbcomp,
+            attribute,
+            by_tdb_row,
+            std::move(target_dim_stats),
+            target_offset,
+            std::move(oracle),
+            indices_ptr->size(), 
+            non_target_offset,
+            slab_stats
+        ),
+        my_indices_ptr(std::move(indices_ptr))
+    {}
+
+    const Value_* fetch(Index_ i, Value_* buffer) {
+        return my_core.fetch_indices(i, *my_indices_ptr, buffer);
+    }
+
+private:
+    SparseCore<solo_, oracle_, Index_, CachedValue_> my_core;
+    tatami::VectorPtr<Index_> my_indices_ptr; 
+};
+
+}
+/**
+ * @endcond
+ */
+
 
 /**
  * @brief TileDB-backed sparse matrix.
@@ -261,47 +909,6 @@ private:
         } else {
             auto secondary_start = secondary_offset + extract_value;
             subarray.add_range(dimdex, secondary_start, secondary_start + extract_length - 1);
-        }
-
-        tiledb::Query query(work.ctx, work.array);
-        query.set_subarray(subarray)
-            .set_layout(dimdex == 1 ? TILEDB_ROW_MAJOR : TILEDB_COL_MAJOR)
-            .set_data_buffer(attr, target.values);
-
-        if constexpr(dimdex == 1) {
-            query.set_data_buffer(second_dimname, target.indices)
-                .set_data_buffer(first_dimname, work.holding_coords);
-        } else {
-            query.set_data_buffer(first_dimname, target.indices)
-                .set_data_buffer(second_dimname, work.holding_coords);
-        }
-
-        if (query.submit() != tiledb::Query::Status::COMPLETE) {
-            throw std::runtime_error("failed to read sparse data from TileDB");
-        }
-
-        size_t result_num = query.result_buffer_elements()[attr].second;
-        target.indptrs.clear();
-        target.indptrs.resize(primary_end - primary_start + 1);
-
-        if constexpr(dimdex == 1) {
-            // Better be in CSR order.
-            for (size_t r = 0; r < result_num; ++r) {
-                target.indices[r] -= second_offset;
-                Index_ i = work.holding_coords[r] - first_offset - primary_start;
-                ++(target.indptrs[i + 1]);
-            }
-        } else {
-            // Better be in CSC order.
-            for (size_t r = 0; r < result_num; ++r) {
-                target.indices[r] -= first_offset;
-                Index_ j = work.holding_coords[r] - second_offset - primary_start;
-                ++(target.indptrs[j + 1]);
-            }
-        }
-
-        for (size_t i = 1; i < target.indptrs.size(); ++i) {
-            target.indptrs[i] += target.indptrs[i-1];
         }
     }
 
