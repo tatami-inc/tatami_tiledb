@@ -53,7 +53,6 @@ struct Components{
     tiledb::Array array;
 };
 
-
 template<typename CachedValue_>
 void execute_query(
     const Components& tdbcomp,
@@ -89,11 +88,11 @@ void extract_block(
     int rowdex = row;
 
     tiledb::Subarray subarray(tdbcomp.ctx, tdbcomp.array);
-    auto actual_target_start = target_offset + target_start; 
-    subarray.add_range(1 - rowdex, actual_target_start, actual_target_start + target_length - 1);
+    int actual_target_start = target_offset + target_start; 
+    subarray.add_range(1 - rowdex, actual_target_start, static_cast<int>(actual_target_start + target_length - 1));
 
-    auto actual_non_target_start = non_target_offset + block_start; 
-    subarray.add_range(rowdex, actual_non_target_start, actual_non_target_start + block_length - 1);
+    int actual_non_target_start = non_target_offset + block_start; 
+    subarray.add_range(rowdex, actual_non_target_start, static_cast<int>(actual_non_target_start + block_length - 1));
 
     size_t buffer_len = static_cast<size_t>(target_length) * static_cast<size_t>(block_length); // cast to avoid overflow.
     execute_query(tdbcomp, subarray, attribute, row, buffer, buffer_len);
@@ -130,7 +129,7 @@ void extract_indices(
  *** Core classes ***
  ********************/
 
-template<bool oracle_, typename Index_>
+template<bool oracle_, typename Index_, typename CachedValue_>
 class SoloCore {
 public:
     SoloCore(
@@ -161,27 +160,44 @@ private:
     tatami::MaybeOracle<oracle_, Index_> my_oracle;
     typename std::conditional<oracle_, size_t, bool>::type my_counter = 0;
 
-public:
-    template<typename Value_>
-    const Value_* fetch_block(Index_ i, Index_ block_start, Index_ block_length, Value_* buffer) {
+    std::vector<CachedValue_> holding;
+
+private:
+    template<typename Value_, typename Length_, class Extract_>
+    const Value_* fetch_raw(Index_ i, Length_ non_target_length, Value_* buffer, Extract_ extract) {
         if constexpr(oracle_) {
             i = my_oracle->get(my_counter++);
         }
-        serialize([&](){
-            extract_block(my_tdbcomp, my_attribute, my_row, i, static_cast<Index_>(1), my_target_offset, block_start, block_length, my_non_target_offset, buffer);
-        });
+        
+        if constexpr(!std::is_same<CachedValue_, Value_>::value) {
+            holding.resize(non_target_length);
+            serialize([&](){
+                extract(i, holding.data());
+            });
+            std::copy(holding.begin(), holding.end(), buffer);
+
+        } else {
+            serialize([&](){
+                extract(i, buffer);
+            });
+        }
+
         return buffer;
+    }
+
+public:
+    template<typename Value_>
+    const Value_* fetch_block(Index_ i, Index_ block_start, Index_ block_length, Value_* buffer) {
+        return fetch_raw(i, block_length, buffer, [&](Index_ j, CachedValue_* buf) {
+            extract_block(my_tdbcomp, my_attribute, my_row, j, static_cast<Index_>(1), my_target_offset, block_start, block_length, my_non_target_offset, buf);
+        });
     }
 
     template<typename Value_>
     const Value_* fetch_indices(Index_ i, const std::vector<Index_>& indices, Value_* buffer) {
-        if constexpr(oracle_) {
-            i = my_oracle->get(my_counter++);
-        }
-        serialize([&](){
-            extract_indices(my_tdbcomp, my_attribute, my_row, i, static_cast<Index_>(1), my_target_offset, indices, my_non_target_offset, buffer);
+        return fetch_raw(i, indices.size(), buffer, [&](Index_ j, CachedValue_* buf) {
+            extract_indices(my_tdbcomp, my_attribute, my_row, j, static_cast<Index_>(1), my_target_offset, indices, my_non_target_offset, buf);
         });
-        return buffer;
     }
 };
 
@@ -340,7 +356,7 @@ public:
 
 template<bool solo_, bool oracle_, typename Index_, typename CachedValue_>
 using DenseCore = typename std::conditional<solo_, 
-      SoloCore<oracle_, Index_>,
+      SoloCore<oracle_, Index_, CachedValue_>,
       typename std::conditional<oracle_,
           OracularCore<Index_, CachedValue_>,
           MyopicCore<Index_, CachedValue_>

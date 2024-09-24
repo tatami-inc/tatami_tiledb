@@ -161,11 +161,11 @@ void extract_block(
     int rowdex = row;
 
     tiledb::Subarray subarray(tdbcomp.ctx, tdbcomp.array);
-    auto actual_target_start = target_offset + target_start; 
-    subarray.add_range(1 - rowdex, actual_target_start, actual_target_start + target_length - 1);
+    int actual_target_start = target_offset + target_start; 
+    subarray.add_range(1 - rowdex, actual_target_start, static_cast<int>(actual_target_start + target_length - 1));
 
-    auto actual_non_target_start = non_target_offset + block_start; 
-    subarray.add_range(rowdex, actual_non_target_start, actual_non_target_start + block_length - 1);
+    int actual_non_target_start = non_target_offset + block_start; 
+    subarray.add_range(rowdex, actual_non_target_start, static_cast<int>(actual_non_target_start + block_length - 1));
 
     execute_query<Index_, CachedValue_, CachedIndex_>(tdbcomp, subarray, attribute, first_dimname, second_dimname, row, target_length, actual_target_start, non_target_offset, work, cache);
 }

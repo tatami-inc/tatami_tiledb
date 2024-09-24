@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "tatami_tiledb/SparseMatrix.hpp"
+#include "tatami_tiledb/tatami_tiledb.hpp"
 #include "tatami_test/tatami_test.hpp"
 #include "tatami_test/temp_file_path.hpp"
 
@@ -26,7 +26,8 @@ public:
     }
 
 protected:
-    inline static std::shared_ptr<tatami::Matrix<double, int> > ref, mat;
+    inline static std::shared_ptr<tatami::Matrix<double, int> > ref;
+    inline static tatami_tiledb::SparseMatrixOptions opt;
     inline static std::string fpath, name;
 
     static void assemble(const SimulationParameters& params) {
@@ -83,11 +84,12 @@ protected:
         query.finalize();
         array.close();
 
-        tatami_tiledb::SparseMatrixOptions topt;
-        topt.maximum_cache_size = static_cast<double>(NR * NC) * cache_fraction * static_cast<double>(sizeof(double));
-        topt.require_minimum_cache = (cache_fraction > 0);
+        // Don't construct a static tiledb matrix here, as the destructor doesn't get called when GoogleTest exits via _exit
+        // (see https://stackoverflow.com/questions/12728535/will-global-static-variables-be-destroyed-at-program-end)
+        // resulting in errors due to unjoined threads in the undestructed TileDB Context.
+        opt.maximum_cache_size = static_cast<double>(NR * NC) * cache_fraction * static_cast<double>(sizeof(double));
+        opt.require_minimum_cache = (cache_fraction > 0);
 
-        mat.reset(new tatami_tiledb::SparseMatrix<double, int>(fpath, name, topt));
         ref.reset(new tatami::CompressedSparseRowMatrix<double, int>(NR, NC, contents.value, contents.index, contents.ptr));
 
         return;
@@ -101,6 +103,8 @@ class SparseUtilsTest : public ::testing::Test, public SparseMatrixTestCore {};
 
 TEST_F(SparseUtilsTest, Basic) {
     assemble(std::make_pair(std::make_pair<int, int>(10, 10), 0));
+    std::unique_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::SparseMatrix<double, int>(fpath, name, opt));
+
     EXPECT_EQ(mat->nrow(), NR);
     EXPECT_EQ(mat->ncol(), NC);
     EXPECT_TRUE(mat->sparse());
@@ -108,27 +112,47 @@ TEST_F(SparseUtilsTest, Basic) {
     EXPECT_TRUE(mat->prefer_rows());
     EXPECT_EQ(mat->prefer_rows_proportion(), 1);
 
-//    bool failed = false;
-//    try {
-//        tatami_tiledb::SparseMatrixSparseMatrix<double, int> mat(fpath, name);
-//    } catch (std::exception& e) {
-//        std::string msg(e.what());
-//        EXPECT_TRUE(msg.find("sparse") != std::string::npos);
-//        failed = true;
-//    }
-//    EXPECT_TRUE(failed);
-
     {
         // First dimension is compromised, switching to the second dimension.
         assemble(std::make_pair(std::make_pair<int, int>(NR, 1), 0));
+        std::unique_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::SparseMatrix<double, int>(fpath, name, opt));
         EXPECT_FALSE(mat->prefer_rows());
     }
 
     {
         // Second dimension is compromised, but we just use the first anyway.
         assemble(std::make_pair(std::make_pair<int, int>(1, NC), 0));
+        std::unique_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::SparseMatrix<double, int>(fpath, name, opt));
         EXPECT_TRUE(mat->prefer_rows());
     }
+}
+
+TEST_F(SparseUtilsTest, Errors) {
+    tatami_test::throws_error([&]() {
+        tatami_tiledb::DenseMatrix<double, int>(fpath, name);
+    }, "dense");
+
+    tatami_test::throws_error([&]() {
+        tatami_tiledb::SparseMatrix<double, int>(fpath, "foo");
+    }, "foo");
+
+    auto sfpath = tatami_test::temp_file_path("tatami-sparse-solo-test");
+    {
+        tatami_test::remove_file_path(sfpath);
+
+        // Creating a 1-dimensional array.
+        tiledb::Context ctx;
+        tiledb::Domain domain(ctx);
+        domain.add_dimension(tiledb::Dimension::create<int>(ctx, "solo", {{ 0, 100 }}, 10));
+
+        tiledb::ArraySchema schema(ctx, TILEDB_SPARSE);
+        schema.set_domain(domain);
+        schema.add_attribute(tiledb::Attribute::create<double>(ctx, "WHEE"));
+        tiledb::Array::create(sfpath, schema);
+    }
+    tatami_test::throws_error([&]() {
+        tatami_tiledb::SparseMatrix<double, int>(sfpath, "WHEE");
+    }, "two dimensions");
 }
 
 /*************************************
@@ -145,6 +169,7 @@ protected:
 
 TEST_P(SparseMatrixAccessFullTest, Basic) {
     auto params = tatami_test::convert_access_parameters(std::get<1>(GetParam()));
+    std::unique_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::SparseMatrix<double, int>(fpath, name, opt));
     tatami_test::test_full_access(params, mat.get(), ref.get());
 }
 
@@ -170,11 +195,14 @@ protected:
 };
 
 TEST_P(SparseSlicedTest, Basic) {
+    std::unique_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::SparseMatrix<double, int>(fpath, name, opt));
+
     auto tparam = GetParam();
     auto params = tatami_test::convert_access_parameters(std::get<1>(tparam));
     auto block = std::get<2>(tparam);
     auto len = params.use_row ? ref->ncol() : ref->nrow();
     size_t FIRST = block.first * len, LAST = block.second * len;
+
     tatami_test::test_block_access(params, mat.get(), ref.get(), FIRST, LAST);
 }
 
@@ -205,11 +233,14 @@ protected:
 };
   
 TEST_P(SparseIndexedTest, Basic) {
+    std::unique_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::SparseMatrix<double, int>(fpath, name, opt));
+
     auto tparam = GetParam();
     auto params = tatami_test::convert_access_parameters(std::get<1>(tparam));
     auto index = std::get<2>(tparam);
     auto len = params.use_row ? ref->ncol() : ref->nrow();
     size_t FIRST = index.first * len, STEP = index.second;
+
     tatami_test::test_indexed_access(params, mat.get(), ref.get(), FIRST, STEP);
 }
 
@@ -273,6 +304,8 @@ protected:
 };
 
 TEST_P(SparseMatrixParallelTest, Simple) {
+    std::unique_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::SparseMatrix<double, int>(fpath, name, opt));
+
     auto param = GetParam();
     bool row = std::get<1>(param);
     bool oracle = std::get<2>(param);
@@ -293,3 +326,26 @@ INSTANTIATE_TEST_SUITE_P(
         ::testing::Values(true, false)  // oracle usage
     )
 );
+
+/*************************************
+ *************************************/
+
+class SparseMatrixCachedTypeTest : public ::testing::Test, public SparseMatrixTestCore {
+protected:
+    void SetUp() {
+        assemble({ { 10, 10 }, 0});
+    }
+};
+
+TEST_F(SparseMatrixCachedTypeTest, Simple) {
+    std::unique_ptr<tatami::Matrix<int, size_t> > mat(new tatami_tiledb::SparseMatrix<int, size_t, double, int>(fpath, name, opt));
+    auto mext = mat->dense_row();
+    std::shared_ptr<tatami::Matrix<int, size_t> > ref2 = tatami::make_DelayedCast<int, size_t>(ref);
+    auto rext = ref2->dense_row();
+
+    for (size_t r = 0; r < NR; ++r) {
+        auto mvec = tatami_test::fetch(mext.get(), r, NC);
+        auto rvec = tatami_test::fetch(rext.get(), r, NC);
+        EXPECT_EQ(mvec, rvec);
+    }
+}
