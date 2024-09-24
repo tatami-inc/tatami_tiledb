@@ -78,6 +78,7 @@ protected:
 
 /*************************************
  *************************************/
+#ifndef TATAMI_TILEDB_TEST_PARALLEL
 
 class DenseUtilsTest : public ::testing::Test, public DenseMatrixTestCore {};
 
@@ -241,6 +242,37 @@ INSTANTIATE_TEST_SUITE_P(
 /*************************************
  *************************************/
 
+class DenseMatrixCachedTypeTest : public ::testing::Test, public DenseMatrixTestCore {
+protected:
+    void SetUp() {
+        assemble({ { 10, 10 }, 0 });
+    }
+};
+
+TEST_F(DenseMatrixCachedTypeTest, Simple) {
+    std::unique_ptr<tatami::Matrix<int, size_t> > mat(new tatami_tiledb::DenseMatrix<int, size_t, double>(fpath, name, opt));
+    auto mext = mat->dense_row();
+    std::shared_ptr<tatami::Matrix<int, size_t> > ref2 = tatami::make_DelayedCast<int, size_t>(ref);
+    auto rext2 = ref2->dense_row();
+//    std::unique_ptr<tatami::Matrix<double, int> > mat2(new tatami_tiledb::DenseMatrix<double, int, int>(fpath, name, opt));
+//    auto mext2 = mat2->dense_row();
+
+    for (size_t r = 0; r < NR; ++r) {
+        auto mvec = tatami_test::fetch(mext.get(), r, NC);
+        auto rvec2 = tatami_test::fetch(rext2.get(), r, NC);
+        EXPECT_EQ(mvec, rvec2);
+//
+//        auto mvec2 = tatami_test::fetch<double, int>(mext2.get(), r, NC);
+//        std::vector<double> rcopy(rvec2.begin(), rvec2.end());
+//        EXPECT_EQ(rcopy, mvec2);
+    }
+}
+
+/*************************************
+ *************************************/
+#else 
+#include "parallel.h"
+
 class DenseMatrixParallelTest : public ::testing::TestWithParam<std::tuple<DenseMatrixTestCore::SimulationParameters, bool, bool> >, public DenseMatrixTestCore {
 protected:
     void SetUp() {
@@ -252,6 +284,9 @@ protected:
         size_t dim = (row ? refmat->nrow() : refmat->ncol());
         size_t otherdim = (row ? refmat->ncol() : refmat->nrow());
         std::vector<double> computed(dim), expected(dim);
+
+
+
 
         tatami::parallelize([&](size_t, int start, int len) -> void {
             auto ext = [&]() {
@@ -307,31 +342,5 @@ INSTANTIATE_TEST_SUITE_P(
     )
 );
 
-/*************************************
- *************************************/
 
-class DenseMatrixCachedTypeTest : public ::testing::Test, public DenseMatrixTestCore {
-protected:
-    void SetUp() {
-        assemble({ { 10, 10 }, 0 });
-    }
-};
-
-TEST_F(DenseMatrixCachedTypeTest, Simple) {
-    std::unique_ptr<tatami::Matrix<int, size_t> > mat(new tatami_tiledb::DenseMatrix<int, size_t, double>(fpath, name, opt));
-    auto mext = mat->dense_row();
-    std::shared_ptr<tatami::Matrix<int, size_t> > ref2 = tatami::make_DelayedCast<int, size_t>(ref);
-    auto rext2 = ref2->dense_row();
-//    std::unique_ptr<tatami::Matrix<double, int> > mat2(new tatami_tiledb::DenseMatrix<double, int, int>(fpath, name, opt));
-//    auto mext2 = mat2->dense_row();
-
-    for (size_t r = 0; r < NR; ++r) {
-        auto mvec = tatami_test::fetch(mext.get(), r, NC);
-        auto rvec2 = tatami_test::fetch(rext2.get(), r, NC);
-        EXPECT_EQ(mvec, rvec2);
-//
-//        auto mvec2 = tatami_test::fetch<double, int>(mext2.get(), r, NC);
-//        std::vector<double> rcopy(rvec2.begin(), rvec2.end());
-//        EXPECT_EQ(rcopy, mvec2);
-    }
-}
+#endif

@@ -49,3 +49,6 @@ macro(create_test target)
 endmacro()
 
 create_test(libtest)
+
+create_test(partest)
+target_compile_definitions(partest PRIVATE TATAMI_TILEDB_TEST_PARALLEL=1)

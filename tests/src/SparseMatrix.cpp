@@ -96,6 +96,7 @@ protected:
 
 /*************************************
  *************************************/
+#ifndef TATAMI_TILEDB_TEST_PARALLEL
 
 class SparseUtilsTest : public ::testing::Test, public SparseMatrixTestCore {};
 
@@ -259,6 +260,31 @@ INSTANTIATE_TEST_SUITE_P(
 /*************************************
  *************************************/
 
+class SparseMatrixCachedTypeTest : public ::testing::Test, public SparseMatrixTestCore {
+protected:
+    void SetUp() {
+        assemble({ { 10, 10 }, 0});
+    }
+};
+
+TEST_F(SparseMatrixCachedTypeTest, Simple) {
+    std::unique_ptr<tatami::Matrix<int, size_t> > mat(new tatami_tiledb::SparseMatrix<int, size_t, double, int>(fpath, name, opt));
+    auto mext = mat->dense_row();
+    std::shared_ptr<tatami::Matrix<int, size_t> > ref2 = tatami::make_DelayedCast<int, size_t>(ref);
+    auto rext = ref2->dense_row();
+
+    for (size_t r = 0; r < NR; ++r) {
+        auto mvec = tatami_test::fetch(mext.get(), r, NC);
+        auto rvec = tatami_test::fetch(rext.get(), r, NC);
+        EXPECT_EQ(mvec, rvec);
+    }
+}
+
+/*************************************
+ *************************************/
+#else
+#include "parallel.h"
+
 class SparseMatrixParallelTest : public ::testing::TestWithParam<std::tuple<SparseMatrixTestCore::SimulationParameters, bool, bool> >, public SparseMatrixTestCore {
 protected:
     void SetUp() {
@@ -325,25 +351,4 @@ INSTANTIATE_TEST_SUITE_P(
     )
 );
 
-/*************************************
- *************************************/
-
-class SparseMatrixCachedTypeTest : public ::testing::Test, public SparseMatrixTestCore {
-protected:
-    void SetUp() {
-        assemble({ { 10, 10 }, 0});
-    }
-};
-
-TEST_F(SparseMatrixCachedTypeTest, Simple) {
-    std::unique_ptr<tatami::Matrix<int, size_t> > mat(new tatami_tiledb::SparseMatrix<int, size_t, double, int>(fpath, name, opt));
-    auto mext = mat->dense_row();
-    std::shared_ptr<tatami::Matrix<int, size_t> > ref2 = tatami::make_DelayedCast<int, size_t>(ref);
-    auto rext = ref2->dense_row();
-
-    for (size_t r = 0; r < NR; ++r) {
-        auto mvec = tatami_test::fetch(mext.get(), r, NC);
-        auto rvec = tatami_test::fetch(rext.get(), r, NC);
-        EXPECT_EQ(mvec, rvec);
-    }
-}
+#endif
