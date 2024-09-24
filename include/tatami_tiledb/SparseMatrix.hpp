@@ -63,12 +63,8 @@ struct Workspace {
     std::vector<int> non_target_indices;
 };
 
-// All TileDB-related members.
-struct Components{
-    Components(const std::string& location) : array(ctx, location, TILEDB_READ) {}
-    tiledb::Context ctx;
-    tiledb::Array array;
-};
+// All TileDB-related members, aliased here for convenience.
+typedef ::tatami_tiledb::internal::Components Components;
 
 template<typename CachedValue_, typename CachedIndex_>
 using Slab = typename tatami_chunked::SparseSlabFactory<CachedValue_, CachedIndex_>::Slab;

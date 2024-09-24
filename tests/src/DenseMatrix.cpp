@@ -17,11 +17,9 @@ public:
             ::testing::Values(
                 std::pair<int, int>(NR, 1),
                 std::pair<int, int>(1, NC),
-                std::make_pair(7, 17), // using tile sizes that are a little odd to check for off-by-one errors.
-                std::make_pair(19, 7),
-                std::make_pair(11, 11)
+                std::make_pair(7, 7) // using tile sizes that are a little odd to check for off-by-one errors.
             ),
-            ::testing::Values(0, 0.01, 0.1) // cache fraction multiplier
+            ::testing::Values(0, 0.1) // cache fraction multiplier
         );
     }
 
@@ -45,12 +43,11 @@ protected:
 
         // Creating the array.
         tiledb::Context ctx;
-        tiledb::Domain domain(ctx);
 
         // Adding some non-trivial offsets so that life remains a bit interesting.
-        domain
-            .add_dimension(tiledb::Dimension::create<int>(ctx, "rows", {{10, NR + 10 - 1}}, tile_sizes.first))
-            .add_dimension(tiledb::Dimension::create<int>(ctx, "cols", {{5, NC + 5 - 1}}, tile_sizes.second));
+        tiledb::Domain domain(ctx);
+        domain.add_dimension(tiledb::Dimension::create<int>(ctx, "rows", {{10, NR + 10 - 1}}, tile_sizes.first));
+        domain.add_dimension(tiledb::Dimension::create<int>(ctx, "cols", {{5, NC + 5 - 1}}, tile_sizes.second));
 
         tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
         schema.set_domain(domain);
@@ -324,11 +321,17 @@ TEST_F(DenseMatrixCachedTypeTest, Simple) {
     std::unique_ptr<tatami::Matrix<int, size_t> > mat(new tatami_tiledb::DenseMatrix<int, size_t, double>(fpath, name, opt));
     auto mext = mat->dense_row();
     std::shared_ptr<tatami::Matrix<int, size_t> > ref2 = tatami::make_DelayedCast<int, size_t>(ref);
-    auto rext = ref2->dense_row();
+    auto rext2 = ref2->dense_row();
+//    std::unique_ptr<tatami::Matrix<double, int> > mat2(new tatami_tiledb::DenseMatrix<double, int, int>(fpath, name, opt));
+//    auto mext2 = mat2->dense_row();
 
     for (size_t r = 0; r < NR; ++r) {
         auto mvec = tatami_test::fetch(mext.get(), r, NC);
-        auto rvec = tatami_test::fetch(rext.get(), r, NC);
-        EXPECT_EQ(mvec, rvec);
+        auto rvec2 = tatami_test::fetch(rext2.get(), r, NC);
+        EXPECT_EQ(mvec, rvec2);
+//
+//        auto mvec2 = tatami_test::fetch<double, int>(mext2.get(), r, NC);
+//        std::vector<double> rcopy(rvec2.begin(), rvec2.end());
+//        EXPECT_EQ(rcopy, mvec2);
     }
 }

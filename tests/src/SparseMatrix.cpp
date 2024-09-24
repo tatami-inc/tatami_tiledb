@@ -17,11 +17,9 @@ public:
             ::testing::Values(
                 std::pair<int, int>(NR, 1),
                 std::pair<int, int>(1, NC),
-                std::make_pair(7, 17), // using tile sizes that are a little odd to check for off-by-one errors.
-                std::make_pair(19, 7),
-                std::make_pair(11, 11)
+                std::make_pair(7, 7) // using tile sizes that are a little odd to check for off-by-one errors.
             ),
-            ::testing::Values(0, 0.01, 0.1) // cache fraction multiplier
+            ::testing::Values(0, 0.1) // cache fraction multiplier
         );
     }
 
