@@ -542,7 +542,7 @@ public:
      * @param uri File path (or some other appropriate location) of the TileDB array.
      * @param attribute Name of the attribute containing the data of interest.
      */
-    DenseMatrix(std::string uri, std::string attribute) : DenseMatrix(std::move(uri), std::move(attribute), DenseMatrixOptions()) {}
+    DenseMatrix(const std::string& uri, std::string attribute) : DenseMatrix(uri, std::move(attribute), DenseMatrixOptions()) {}
 
 private:
     std::shared_ptr<DenseMatrix_internal::Components> my_tdbcomp;
