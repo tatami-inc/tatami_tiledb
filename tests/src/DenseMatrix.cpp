@@ -8,19 +8,16 @@ class DenseMatrixTestCore {
 public:
     static constexpr size_t NR = 200, NC = 100;
 
-    typedef std::tuple<std::pair<int, int>, double> SimulationParameters;
+    typedef std::pair<int, int> SimulationParameters;
 
     inline static SimulationParameters last_params;
 
 public:
     static auto create_combinations() {
-        return ::testing::Combine(
-            ::testing::Values(
-                std::pair<int, int>(NR, 1),
-                std::pair<int, int>(1, NC),
-                std::make_pair(7, 7) // using tile sizes that are a little odd to check for off-by-one errors.
-            ),
-            ::testing::Values(0, 0.1) // cache fraction multiplier
+        return ::testing::Values(
+            std::pair<int, int>(NR, 1),
+            std::pair<int, int>(1, NC),
+            std::make_pair(7, 7) // using tile sizes that are a little odd to check for off-by-one errors.
         );
     }
 
@@ -35,9 +32,6 @@ protected:
         }
         last_params = params;
 
-        auto tile_sizes = std::get<0>(params);
-        auto cache_fraction = std::get<1>(params);
-
         fpath = tatami_test::temp_file_path("tatami-dense-test");
         tatami_test::remove_file_path(fpath);
         name = "stuff";
@@ -47,8 +41,8 @@ protected:
 
         // Adding some non-trivial offsets so that life remains a bit interesting.
         tiledb::Domain domain(ctx);
-        domain.add_dimension(tiledb::Dimension::create<int>(ctx, "rows", {{10, NR + 10 - 1}}, tile_sizes.first));
-        domain.add_dimension(tiledb::Dimension::create<int>(ctx, "cols", {{5, NC + 5 - 1}}, tile_sizes.second));
+        domain.add_dimension(tiledb::Dimension::create<int>(ctx, "rows", {{10, NR + 10 - 1}}, params.first));
+        domain.add_dimension(tiledb::Dimension::create<int>(ctx, "cols", {{5, NC + 5 - 1}}, params.second));
 
         tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
         schema.set_domain(domain);
@@ -68,8 +62,8 @@ protected:
         // Don't construct a static tiledb matrix here, as the destructor doesn't get called when GoogleTest exits via _exit
         // (see https://stackoverflow.com/questions/12728535/will-global-static-variables-be-destroyed-at-program-end)
         // resulting in errors due to unjoined threads in the undestructed TileDB Context.
-        opt.maximum_cache_size = static_cast<double>(NR * NC) * cache_fraction * static_cast<double>(sizeof(double));
-        opt.require_minimum_cache = (cache_fraction > 0);
+        opt.maximum_cache_size = static_cast<double>(NR * NC) * 0.1 * static_cast<double>(sizeof(double));
+        opt.require_minimum_cache = true;
 
         ref.reset(new tatami::DenseRowMatrix<double, int>(NR, NC, std::move(values)));
 
@@ -84,7 +78,7 @@ protected:
 class DenseUtilsTest : public ::testing::Test, public DenseMatrixTestCore {};
 
 TEST_F(DenseUtilsTest, Basic) {
-    assemble(std::make_pair(std::make_pair<int, int>(10, 10), 0));
+    assemble({ 10, 10 });
     std::shared_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::DenseMatrix<double, int>(fpath, name, opt));
 
     EXPECT_EQ(mat->nrow(), NR);
@@ -96,14 +90,14 @@ TEST_F(DenseUtilsTest, Basic) {
 
     {
         // First dimension is compromised, switching to the second dimension.
-        assemble(std::make_pair(std::make_pair<int, int>(NR, 1), 0));
+        assemble({ NR, 1 });
         std::shared_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::DenseMatrix<double, int>(fpath, name, opt));
         EXPECT_FALSE(mat->prefer_rows());
     }
 
     {
         // Second dimension is compromised, but we just use the first anyway.
-        assemble(std::make_pair(std::make_pair<int, int>(1, NC), 0));
+        assemble({ 1, NC });
         std::shared_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::DenseMatrix<double, int>(fpath, name, opt));
         EXPECT_TRUE(mat->prefer_rows());
     }
@@ -243,10 +237,44 @@ INSTANTIATE_TEST_SUITE_P(
 /*************************************
  *************************************/
 
+class DenseUncachedTest : 
+    public ::testing::TestWithParam<tatami_test::StandardTestAccessParameters>,
+    public DenseMatrixTestCore {
+protected:
+    void SetUp() {
+        assemble({ 10, 10 });
+    }
+};
+
+TEST_P(DenseUncachedTest, Basic) {
+    tatami_tiledb::DenseMatrixOptions opt2;
+    opt2.maximum_cache_size = 0;
+    opt2.require_minimum_cache = false;
+    std::shared_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::DenseMatrix<double, int>(fpath, name, opt2));
+
+    auto params = tatami_test::convert_access_parameters(GetParam());
+    tatami_test::test_full_access(params, mat.get(), ref.get());
+
+    auto len = params.use_row ? ref->ncol() : ref->nrow();
+    size_t FIRST = len * 0.25, LAST = len * 0.75;
+    tatami_test::test_block_access(params, mat.get(), ref.get(), FIRST, LAST);
+
+    tatami_test::test_indexed_access(params, mat.get(), ref.get(), FIRST, 4);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    DenseMatrix,
+    DenseUncachedTest,
+    tatami_test::standard_test_access_parameter_combinations()
+);
+
+/*************************************
+ *************************************/
+
 class DenseMatrixCachedTypeTest : public ::testing::Test, public DenseMatrixTestCore {
 protected:
     void SetUp() {
-        assemble({ { 10, 10 }, 0 });
+        assemble({ 10, 10 });
     }
 };
 
@@ -284,9 +312,6 @@ protected:
         size_t dim = (row ? refmat->nrow() : refmat->ncol());
         size_t otherdim = (row ? refmat->ncol() : refmat->nrow());
         std::vector<double> computed(dim), expected(dim);
-
-
-
 
         tatami::parallelize([&](size_t, int start, int len) -> void {
             auto ext = [&]() {
