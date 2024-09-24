@@ -19,7 +19,7 @@ namespace tatami_tiledb {
 template<class Function_>
 void serialize(Function_ fun) {
 #ifdef TATAMI_TILEDB_PARALLEL_LOCK
-    TATAMI_TILEDB_PARALLEL_LOCK(fun)
+    TATAMI_TILEDB_PARALLEL_LOCK(fun);
 #else
     fun();
 #endif

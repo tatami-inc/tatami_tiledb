@@ -1,5 +1,6 @@
 #ifndef TATAMI_TILEDB_TEST_PARALLEL_HPP
 #define TATAMI_TILEDB_TEST_PARALLEL_HPP
+#ifdef TATAMI_TILEDB_TEST_PARALLEL
 
 #include <mutex>
 
@@ -14,6 +15,6 @@ void lockerup(Function_ fun) {
     fun();
 }
 
-#define TATAMI_TILEDB_PARALLEL_LOCK ::lockerup
-
+#define TATAMI_TILEDB_PARALLEL_LOCK(f) ::lockerup(std::move(f))
+#endif
 #endif

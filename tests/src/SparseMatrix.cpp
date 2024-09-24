@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include "parallel.h" // include before tatami_tiledb.hpp
 #include "tatami_tiledb/tatami_tiledb.hpp"
 #include "tatami_test/tatami_test.hpp"
 #include "tatami_test/temp_file_path.hpp"
@@ -283,7 +284,6 @@ TEST_F(SparseMatrixCachedTypeTest, Simple) {
 /*************************************
  *************************************/
 #else
-#include "parallel.h"
 
 class SparseMatrixParallelTest : public ::testing::TestWithParam<std::tuple<SparseMatrixTestCore::SimulationParameters, bool, bool> >, public SparseMatrixTestCore {
 protected:
