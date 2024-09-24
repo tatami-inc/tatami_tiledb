@@ -55,14 +55,14 @@ struct Components{
 
 template<typename CachedValue_>
 void execute_query(
+    const Components& tdbcomp,
+    const tiledb::Subarray& subarray,
     const std::string& attribute,
     bool row,
     CachedValue_* buffer,
-    size_t buffer_length,
-    const Components& comp,
-    tiledb::Subarray subarray)
+    size_t buffer_length)
 {
-    tiledb::Query query(comp.ctx, comp.array);
+    tiledb::Query query(tdbcomp.ctx, tdbcomp.array);
     query.set_subarray(subarray)
         .set_layout(row ? TILEDB_ROW_MAJOR : TILEDB_COL_MAJOR)
         .set_data_buffer(attribute, buffer, buffer_length);
@@ -74,20 +74,20 @@ void execute_query(
 
 template<typename Index_, typename CachedValue_>
 void extract_block(
+    const Components& tdbcomp,
     const std::string& attribute,
     bool row,
-    int target_offset,
     Index_ target_start,
     Index_ target_length,
-    int non_target_offset,
+    int target_offset,
     Index_ block_start,
     Index_ block_length,
-    CachedValue_* buffer,
-    const Components& comp) 
+    int non_target_offset,
+    CachedValue_* buffer)
 {
     int rowdex = row;
 
-    tiledb::Subarray subarray(comp.ctx, comp.array);
+    tiledb::Subarray subarray(tdbcomp.ctx, tdbcomp.array);
     auto actual_target_start = target_offset + target_start; 
     subarray.add_range(1 - rowdex, actual_target_start, actual_target_start + target_length - 1);
 
@@ -95,24 +95,24 @@ void extract_block(
     subarray.add_range(rowdex, actual_non_target_start, actual_non_target_start + block_length - 1);
 
     size_t buffer_len = static_cast<size_t>(target_length) * static_cast<size_t>(block_length); // cast to avoid overflow.
-    execute_query(attribute, row, buffer, buffer_len, comp, subarray);
+    execute_query(tdbcomp, subarray, attribute, row, buffer, buffer_len);
 }
 
 template<typename Index_, typename CachedValue_>
 void extract_indices(
+    const Components& tdbcomp,
     const std::string& attribute,
     bool row,
-    int target_offset,
     Index_ target_start,
     Index_ target_length,
-    int non_target_offset,
+    int target_offset,
     const std::vector<Index_>& indices,
-    CachedValue_* buffer,
-    const Components& comp) 
+    int non_target_offset,
+    CachedValue_* buffer)
 {
     int rowdex = row;
 
-    tiledb::Subarray subarray(comp.ctx, comp.array);
+    tiledb::Subarray subarray(tdbcomp.ctx, tdbcomp.array);
     auto actual_target_start = target_offset + target_start; 
     subarray.add_range(1 - rowdex, actual_target_start, actual_target_start + target_length - 1);
 
@@ -122,7 +122,7 @@ void extract_indices(
     });
 
     size_t buffer_len = static_cast<size_t>(target_length) * indices.size(); // cast to avoid overflow.
-    execute_query(attribute, row, buffer, buffer_len, comp, subarray);
+    execute_query(tdbcomp, subarray, attribute, row, buffer, buffer_len);
 }
 
 /********************
@@ -167,7 +167,7 @@ public:
             i = my_oracle->get(my_counter++);
         }
         serialize([&](){
-            extract_block(my_attribute, my_row, my_target_offset, i, static_cast<Index_>(1), my_non_target_offset, block_start, block_length, buffer, my_tdbcomp);
+            extract_block(my_tdbcomp, my_attribute, my_row, i, static_cast<Index_>(1), my_target_offset, block_start, block_length, my_non_target_offset, buffer);
         });
         return buffer;
     }
@@ -178,7 +178,7 @@ public:
             i = my_oracle->get(my_counter++);
         }
         serialize([&](){
-            extract_indices(my_attribute, my_row, my_target_offset, i, static_cast<Index_>(1), my_non_target_offset, indices, buffer, my_tdbcomp);
+            extract_indices(my_tdbcomp, my_attribute, my_row, i, static_cast<Index_>(1), my_target_offset, indices, my_non_target_offset, buffer);
         });
         return buffer;
     }
@@ -199,7 +199,7 @@ public:
         my_tdbcomp(tdbcomp),
         my_attribute(attribute),
         my_row(row),
-        my_dim_stats(std::move(target_dim_stats)),
+        my_target_dim_stats(std::move(target_dim_stats)),
         my_target_offset(target_offset),
         my_non_target_offset(non_target_offset),
         my_factory(slab_stats), 
@@ -211,7 +211,7 @@ private:
     const std::string& my_attribute;
     bool my_row;
 
-    tatami_chunked::ChunkDimensionStats<Index_> my_dim_stats;
+    tatami_chunked::ChunkDimensionStats<Index_> my_target_dim_stats;
     int my_target_offset;
     int my_non_target_offset;
 
@@ -222,8 +222,8 @@ private:
 private:
     template<typename Value_, class Extract_>
     void fetch_raw(Index_ i, Value_* buffer, size_t non_target_length, Extract_ extract) {
-        Index_ chunk = i / my_dim_stats.chunk_length;
-        Index_ index = i % my_dim_stats.chunk_length;
+        Index_ chunk = i / my_target_dim_stats.chunk_length;
+        Index_ index = i % my_target_dim_stats.chunk_length;
 
         const auto& info = my_cache.find(
             chunk, 
@@ -231,9 +231,9 @@ private:
                 return my_factory.create();
             },
             /* populate = */ [&](Index_ id, Slab& contents) -> void {
-                auto curdim = tatami_chunked::get_chunk_length(my_dim_stats, id);
+                auto curdim = tatami_chunked::get_chunk_length(my_target_dim_stats, id);
                 serialize([&]() -> void {
-                    extract(id * my_dim_stats.chunk_length, curdim, contents.data);
+                    extract(id * my_target_dim_stats.chunk_length, curdim, contents.data);
                 });
             }
         );
@@ -246,7 +246,7 @@ public:
     template<typename Value_>
     const Value_* fetch_block(Index_ i, Index_ block_start, Index_ block_length, Value_* buffer) {
         fetch_raw(i, buffer, block_length, [&](Index_ start, Index_ length, CachedValue_* buf) {
-            extract_block(my_attribute, my_row, my_target_offset, start, length, my_non_target_offset, block_start, block_length, buf, my_tdbcomp);
+            extract_block(my_tdbcomp, my_attribute, my_row, start, length, my_target_offset, block_start, block_length, my_non_target_offset, buf);
         });
         return buffer;
     }
@@ -254,14 +254,15 @@ public:
     template<typename Value_>
     const Value_* fetch_indices(Index_ i, const std::vector<Index_>& indices, Value_* buffer) {
         fetch_raw(i, buffer, indices.size(), [&](Index_ start, Index_ length, CachedValue_* buf) {
-            extract_indices(my_attribute, my_row, my_target_offset, start, length, my_non_target_offset, indices, buf, my_tdbcomp);
+            extract_indices(my_tdbcomp, my_attribute, my_row, start, length, my_target_offset, indices, my_non_target_offset, buf);
         });
         return buffer;
     }
 };
 
 template<typename Index_, typename CachedValue_>
-struct OracularCore {
+class OracularCore {
+public:
     OracularCore(
         const Components& tdbcomp,
         const std::string& attribute, 
@@ -274,7 +275,7 @@ struct OracularCore {
         my_tdbcomp(tdbcomp),
         my_attribute(attribute),
         my_row(row),
-        my_dim_stats(std::move(target_dim_stats)),
+        my_target_dim_stats(std::move(target_dim_stats)),
         my_target_offset(target_offset),
         my_non_target_offset(non_target_offset),
         my_factory(slab_stats), 
@@ -286,7 +287,7 @@ private:
     const std::string& my_attribute;
     bool my_row;
 
-    tatami_chunked::ChunkDimensionStats<Index_> my_dim_stats;
+    tatami_chunked::ChunkDimensionStats<Index_> my_target_dim_stats;
     int my_target_offset;
     int my_non_target_offset;
 
@@ -299,7 +300,7 @@ public:
     void fetch_raw([[maybe_unused]] Index_ i, Value_* buffer, size_t non_target_length, Extract_ extract) {
         auto info = my_cache.next(
             /* identify = */ [&](Index_ current) -> std::pair<Index_, Index_> {
-                return std::pair<Index_, Index_>(current / my_dim_stats.chunk_length, current % my_dim_stats.chunk_length);
+                return std::pair<Index_, Index_>(current / my_target_dim_stats.chunk_length, current % my_target_dim_stats.chunk_length);
             }, 
             /* create = */ [&]() -> Slab {
                 return my_factory.create();
@@ -307,8 +308,8 @@ public:
             /* populate = */ [&](const std::vector<std::pair<Index_, Slab*> >& chunks) -> void {
                 serialize([&]() -> void {
                     for (const auto& c : chunks) {
-                        auto curdim = tatami_chunked::get_chunk_length(my_dim_stats, c.first);
-                        extract(c.first * my_dim_stats.chunk_length, curdim, c.second->data);
+                        auto curdim = tatami_chunked::get_chunk_length(my_target_dim_stats, c.first);
+                        extract(c.first * my_target_dim_stats.chunk_length, curdim, c.second->data);
                     }
                 });
             }
@@ -322,7 +323,7 @@ public:
     template<typename Value_>
     const Value_* fetch_block(Index_ i, Index_ block_start, Index_ block_length, Value_* buffer) {
         fetch_raw(i, buffer, block_length, [&](Index_ start, Index_ length, CachedValue_* buf) {
-            extract_block(my_attribute, my_row, my_target_offset, start, length, my_non_target_offset, block_start, block_length, buf, my_tdbcomp);
+            extract_block(my_tdbcomp, my_attribute, my_row, start, length, my_target_offset, block_start, block_length, my_non_target_offset, buf);
         });
         return buffer;
     }
@@ -330,7 +331,7 @@ public:
     template<typename Value_>
     const Value_* fetch_indices(Index_ i, const std::vector<Index_>& indices, Value_* buffer) {
         fetch_raw(i, buffer, indices.size(), [&](Index_ start, Index_ length, CachedValue_* buf) {
-            extract_indices(my_attribute, my_row, my_target_offset, start, length, my_non_target_offset, indices, buf, my_tdbcomp);
+            extract_indices(my_tdbcomp, my_attribute, my_row, start, length, my_target_offset, indices, my_non_target_offset, buf);
         });
         return buffer;
     }
@@ -350,11 +351,12 @@ using DenseCore = typename std::conditional<solo_,
  ***************************/
 
 template<bool solo_, bool oracle_, typename Value_, typename Index_, typename CachedValue_>
-struct Full : public tatami::DenseExtractor<oracle_, Value_, Index_> {
+class Full : public tatami::DenseExtractor<oracle_, Value_, Index_> {
+public:
     Full(
         const Components& tdbcomp,
         const std::string& attribute, 
-        bool by_tdb_row,
+        bool row,
         tatami_chunked::ChunkDimensionStats<Index_> target_dim_stats,
         int target_offset,
         tatami::MaybeOracle<oracle_, Index_> oracle,
@@ -364,7 +366,7 @@ struct Full : public tatami::DenseExtractor<oracle_, Value_, Index_> {
         my_core(
             tdbcomp,
             attribute,
-            by_tdb_row,
+            row,
             std::move(target_dim_stats),
             target_offset,
             std::move(oracle),
@@ -384,11 +386,12 @@ private:
 };
 
 template<bool solo_, bool oracle_, typename Value_, typename Index_, typename CachedValue_> 
-struct Block : public tatami::DenseExtractor<oracle_, Value_, Index_> {
+class Block : public tatami::DenseExtractor<oracle_, Value_, Index_> {
+public:
     Block(
         const Components& tdbcomp,
         const std::string& attribute, 
-        bool by_tdb_row,
+        bool row,
         tatami_chunked::ChunkDimensionStats<Index_> target_dim_stats,
         int target_offset, 
         tatami::MaybeOracle<oracle_, Index_> oracle,
@@ -399,7 +402,7 @@ struct Block : public tatami::DenseExtractor<oracle_, Value_, Index_> {
         my_core( 
             tdbcomp,
             attribute,
-            by_tdb_row,
+            row,
             std::move(target_dim_stats),
             target_offset,
             std::move(oracle),
@@ -420,11 +423,12 @@ private:
 };
 
 template<bool solo_, bool oracle_, typename Value_, typename Index_, typename CachedValue_>
-struct Index : public tatami::DenseExtractor<oracle_, Value_, Index_> {
+class Index : public tatami::DenseExtractor<oracle_, Value_, Index_> {
+public:
     Index(
         const Components& tdbcomp,
         const std::string& attribute, 
-        bool by_tdb_row,
+        bool row,
         tatami_chunked::ChunkDimensionStats<Index_> target_dim_stats,
         int target_offset, 
         tatami::MaybeOracle<oracle_, Index_> oracle,
@@ -434,7 +438,7 @@ struct Index : public tatami::DenseExtractor<oracle_, Value_, Index_> {
         my_core(
             tdbcomp,
             attribute,
-            by_tdb_row,
+            row,
             std::move(target_dim_stats),
             target_offset,
             std::move(oracle),
