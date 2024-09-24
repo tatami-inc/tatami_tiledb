@@ -150,12 +150,9 @@ protected:
 };
 
 TEST_P(DenseMatrixAccessFullTest, Basic) {
-    tiledb::Stats::enable();
     auto params = tatami_test::convert_access_parameters(std::get<1>(GetParam()));
     std::shared_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::DenseMatrix<double, int>(fpath, name, opt));
     tatami_test::test_full_access(params, mat.get(), ref.get());
-    tiledb::Stats::dump(stdout);
-    tiledb::Stats::disable();
 }
 
 INSTANTIATE_TEST_SUITE_P(
