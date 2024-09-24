@@ -9,6 +9,7 @@
 #include <string>
 #include <memory>
 #include <vector>
+#include <type_traits>
 
 /**
  * @file DenseMatrix.hpp
