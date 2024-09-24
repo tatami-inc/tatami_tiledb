@@ -102,7 +102,7 @@ void execute_query(
     Workspace<CachedValue_>& work,
     Slab<CachedValue_, CachedIndex_>& cache)
 {
-    tiledb::Query query(comp.ctx, comp.array);
+    tiledb::Query query(tdbcomp.ctx, tdbcomp.array);
     query.set_subarray(subarray)
         .set_data_buffer(attribute, work.values);
 
@@ -112,13 +112,13 @@ void execute_query(
         query.set_data_buffer(first_dimname, work.target_indices)
             .set_layout(TILEDB_ROW_MAJOR);
         if (!cache.indices.empty()) {
-            query.set_data_buffer(second_dimname, work.non_target_indices)
+            query.set_data_buffer(second_dimname, work.non_target_indices);
         }
     } else {
         query.set_data_buffer(second_dimname, work.target_indices)
             .set_layout(TILEDB_COL_MAJOR);
         if (!cache.indices.empty()) {
-            query.set_data_buffer(first_dimname, work.non_target_indices)
+            query.set_data_buffer(first_dimname, work.non_target_indices);
         }
     }
 
@@ -159,7 +159,7 @@ void extract_block(
 {
     int rowdex = row;
 
-    tiledb::Subarray subarray(comp.ctx, comp.array);
+    tiledb::Subarray subarray(tdbcomp.ctx, tdbcomp.array);
     auto actual_target_start = target_offset + target_start; 
     subarray.add_range(1 - rowdex, actual_target_start, actual_target_start + target_length - 1);
 
@@ -186,7 +186,7 @@ void extract_indices(
 {
     int rowdex = row;
 
-    tiledb::Subarray subarray(comp.ctx, comp.array);
+    tiledb::Subarray subarray(tdbcomp.ctx, tdbcomp.array);
     auto actual_target_start = target_offset + target_start; 
     subarray.add_range(1 - rowdex, actual_target_start, actual_target_start + target_length - 1);
 
@@ -269,14 +269,14 @@ private:
             i = my_oracle->get(my_counter++);
         }
 
-        placeholder.number = &count;
+        my_stub_slab.number = &count;
         if (my_needs_value) {
             vbuffer.resize(non_target_length);
-            placeholder.value[0] = vbuffer.data();
+            my_stub_slab.value[0] = vbuffer.data();
         }
         if (my_needs_index) {
             ibuffer.resize(non_target_length);
-            placeholder.index[0] = ibuffer.data();
+            my_stub_slab.index[0] = ibuffer.data();
         }
 
         serialize([&](){
@@ -369,7 +369,7 @@ private:
 
     Workspace<CachedValue_> my_work;
     tatami_chunked::SparseSlabFactory<CachedValue_, CachedIndex_> my_factory;
-    typedef decltype(my_factory)::Slab Slab;
+    typedef typename decltype(my_factory)::Slab Slab;
     tatami_chunked::LruSlabCache<Index_, Slab> my_cache;
 
 private:
@@ -476,14 +476,14 @@ private:
     int my_non_target_offset;
 
     Workspace<CachedValue_> my_work;
-    tatami_chunked::SparseSlabFactory<CachedValue_> my_factory;
+    tatami_chunked::SparseSlabFactory<CachedValue_, CachedIndex_> my_factory;
     typedef typename decltype(my_factory)::Slab Slab;
     tatami_chunked::OracularSlabCache<Index_, Index_, Slab> my_cache;
 
 private:
     template<class Extract_>
     std::pair<const Slab*, Index_> fetch_raw([[maybe_unused]] Index_ i, Extract_ extract) {
-        return info = my_cache.next(
+        return my_cache.next(
             /* identify = */ [&](Index_ current) -> std::pair<Index_, Index_> {
                 return std::pair<Index_, Index_>(current / my_target_dim_stats.chunk_length, current % my_target_dim_stats.chunk_length);
             }, 
@@ -493,8 +493,8 @@ private:
             /* populate = */ [&](const std::vector<std::pair<Index_, Slab*> >& chunks) -> void {
                 serialize([&]() -> void {
                     for (const auto& c : chunks) {
-                        auto curdim = tatami_chunked::get_chunk_length(my_dim_stats, c.first);
-                        extract(c.first * my_dim_stats.chunk_length, curdim, c.second->data);
+                        auto curdim = tatami_chunked::get_chunk_length(my_target_dim_stats, c.first);
+                        extract(c.first * my_target_dim_stats.chunk_length, curdim, c.second->data);
                     }
                 });
             }
@@ -636,7 +636,7 @@ public:
         my_core( 
             tdbcomp,
             attribute,
-            by_tdb_row,
+            row,
             std::move(target_dim_stats),
             target_offset,
             std::move(oracle),
@@ -666,7 +666,7 @@ public:
     SparseIndex(
         const Components& tdbcomp,
         const std::string& attribute, 
-        bool by_tdb_row,
+        bool row,
         tatami_chunked::ChunkDimensionStats<Index_> target_dim_stats,
         int target_offset, 
         tatami::MaybeOracle<oracle_, Index_> oracle,
@@ -678,7 +678,7 @@ public:
         my_core(
             tdbcomp,
             attribute,
-            by_tdb_row,
+            row,
             std::move(target_dim_stats),
             target_offset,
             std::move(oracle),
@@ -777,7 +777,7 @@ public:
         my_core( 
             tdbcomp,
             attribute,
-            by_tdb_row,
+            row,
             std::move(target_dim_stats),
             target_offset,
             std::move(oracle),
@@ -801,7 +801,7 @@ public:
 
         std::fill_n(buffer, my_block_length, 0);
         for (decltype(n) j = 0; j < n; ++j) {
-            buffer[iptr[j] - block_start] = vptr[j];
+            buffer[iptr[j] - my_block_start] = vptr[j];
         }
         return buffer;
     }
@@ -817,7 +817,7 @@ public:
     DenseIndex(
         const Components& tdbcomp,
         const std::string& attribute, 
-        bool by_tdb_row,
+        bool row,
         tatami_chunked::ChunkDimensionStats<Index_> target_dim_stats,
         int target_offset, 
         tatami::MaybeOracle<oracle_, Index_> oracle,
@@ -827,7 +827,7 @@ public:
         my_core(
             tdbcomp,
             attribute,
-            by_tdb_row,
+            row,
             std::move(target_dim_stats),
             target_offset,
             std::move(oracle),
@@ -902,14 +902,14 @@ private:
  * This should be a function-like macro that accepts a function and executes it inside a user-defined serial section.
  */
 template<typename Value_, typename Index_, typename CachedValue_ = Value_, typename CachedIndex_ = Index_>
-class TileDbSparseMatrix : public tatami::Matrix<Value_, Index_> {
+class SparseMatrix : public tatami::Matrix<Value_, Index_> {
 public:
     /**
      * @param uri File path (or some other appropriate location) of the TileDB array.
      * @param attribute Name of the attribute containing the data of interest.
      * @param options Further options.
      */
-    TileDbSparseMatrix(std::string uri, std::string attribute, const TileDbOptions& options) : my_attribute(std::move(attribute)) {
+    SparseMatrix(std::string uri, std::string attribute, const SparseMatrixOptions& options) : my_attribute(std::move(attribute)) {
         serialize([&]() {
             // Serializing the deleter. 
             my_tdbcomp.reset(new SparseMatrix_internal::Components(uri), [](SparseMatrix_internal::Components* ptr) {
@@ -926,8 +926,8 @@ public:
             my_cache_size_in_elements = static_cast<double>(options.maximum_cache_size) / (sizeof(Value_) + sizeof(Index_));
             my_require_minimum_cache = options.require_minimum_cache;
 
-            if (!schema.has_attribute(attr)) {
-                throw std::runtime_error("no attribute '" + attr + "' is present in the TileDB array at '" + location + "'");
+            if (!schema.has_attribute(my_attribute)) {
+                throw std::runtime_error("no attribute '" + my_attribute + "' is present in the TileDB array");
             }
 
             tiledb::Domain domain = schema.domain();
@@ -948,7 +948,7 @@ public:
             tiledb::Dimension second_dim = domain.dimension(1);
             auto second_domain = second_dim.domain<int>();
             my_second_offset = second_domain.first;
-            auto second_dim = second_domain.second - second_domain.first + 1;
+            auto second_extent = second_domain.second - second_domain.first + 1;
             auto second_tile = second_dim.tile_extent<int>();
             my_second_dimname = second_dim.name();
 
@@ -963,7 +963,7 @@ public:
      * @param uri File path (or some other appropriate location) of the TileDB array.
      * @param attribute Name of the attribute containing the data of interest.
      */
-    TileDbSparseMatrix(std::string uri, std::string attribute) : TileDbSparseMatrix(std::move(uri), std::move(attribute), TileDbOptions()) {}
+    SparseMatrix(std::string uri, std::string attribute) : SparseMatrix(std::move(uri), std::move(attribute), SparseMatrixOptions()) {}
 
 private:
     std::shared_ptr<SparseMatrix_internal::Components> my_tdbcomp;
@@ -1005,17 +1005,17 @@ public:
     }
 
     bool prefer_rows() const {
-        return prefer_firstdim;
+        return my_prefer_firstdim;
     }
 
     double prefer_rows_proportion() const {
-        return static_cast<double>(prefer_firstdim);
+        return static_cast<double>(my_prefer_firstdim);
     }
 
     bool uses_oracle(bool) const {
         // It won't necessarily be used, but if the cache is empty,
         // the oracle definitely _won't_ be used.
-        return cache_size_in_elements > 0;
+        return my_cache_size_in_elements > 0;
     }
 
 private:
@@ -1102,7 +1102,7 @@ public:
     }
 
     std::unique_ptr<tatami::MyopicSparseExtractor<Value_, Index_> > sparse(bool row, tatami::VectorPtr<Index_> indices_ptr, const tatami::Options& opt) const {
-        auto ptr = dense(row, indices_ptr, opt);
+        auto nidx = indices_ptr->size();
         return populate<false, tatami::MyopicSparseExtractor, SparseMatrix_internal::SparseIndex>(row, nidx, false, std::move(indices_ptr));
     }
 
@@ -1116,7 +1116,7 @@ public:
         const tatami::Options&) 
     const {
         Index_ full_non_target = (row ? ncol_internal() : nrow_internal());
-        return dense_populate<true, tatami::OracularDenseExtractor, SparseMatrix_internal::DenseFull>(row, full_non_target, std::move(oracle), full_non_target);
+        return populate<true, tatami::OracularDenseExtractor, SparseMatrix_internal::DenseFull>(row, full_non_target, std::move(oracle), full_non_target);
     }
 
     std::unique_ptr<tatami::OracularDenseExtractor<Value_, Index_> > dense(
@@ -1126,7 +1126,7 @@ public:
         Index_ block_length, 
         const tatami::Options&) 
     const {
-        return dense_populate<true, tatami::OracularDenseExtractor, SparseMatrix_internal::DenseBlock>(row, block_length, std::move(oracle), block_start, block_length);
+        return populate<true, tatami::OracularDenseExtractor, SparseMatrix_internal::DenseBlock>(row, block_length, std::move(oracle), block_start, block_length);
     }
 
     std::unique_ptr<tatami::OracularDenseExtractor<Value_, Index_> > dense(
@@ -1136,7 +1136,7 @@ public:
         const tatami::Options&) 
     const {
         auto nidx = indices_ptr->size();
-        return dense_populate<true, tatami::OracularDenseExtractor, SparseMatrix_internal::DenseIndex>(row, nidx, std::move(oracle), std::move(indices_ptr));
+        return populate<true, tatami::OracularDenseExtractor, SparseMatrix_internal::DenseIndex>(row, nidx, std::move(oracle), std::move(indices_ptr));
     }
 
     /***********************
@@ -1168,6 +1168,7 @@ public:
         tatami::VectorPtr<Index_> indices_ptr, 
         const tatami::Options& opt) 
     const {
+        auto nidx = indices_ptr->size();
         return populate<false, tatami::OracularSparseExtractor, SparseMatrix_internal::SparseIndex>(row, nidx, std::move(oracle), std::move(indices_ptr));
     }
 };

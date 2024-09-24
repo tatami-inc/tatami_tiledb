@@ -27,8 +27,8 @@ include(GoogleTest)
 
 macro(create_test target)
     add_executable(${target}
-        src/DenseMatrix.cpp)
-#        src/TileDbSparseMatrix.cpp)
+        src/DenseMatrix.cpp
+        src/SparseMatrix.cpp)
 
     target_link_libraries(${target} 
         gtest_main
