@@ -40,19 +40,19 @@ public:
     }
 
 public:
-    void set(tiledb::Query& query, const std::string& name) {
+    void set(tiledb::Query& query, const std::string& name, size_t offset, size_t len) {
         switch (my_type) {
-            case TILEDB_CHAR:    query.set_data_buffer(name, my_char); break;
-            case TILEDB_INT8:    query.set_data_buffer(name, my_i8);   break;
-            case TILEDB_UINT8:   query.set_data_buffer(name, my_u8);   break;
-            case TILEDB_INT16:   query.set_data_buffer(name, my_i16);  break;
-            case TILEDB_UINT16:  query.set_data_buffer(name, my_u16);  break;
-            case TILEDB_INT32:   query.set_data_buffer(name, my_i32);  break;
-            case TILEDB_UINT32:  query.set_data_buffer(name, my_u32);  break;
-            case TILEDB_INT64:   query.set_data_buffer(name, my_i64);  break;
-            case TILEDB_UINT64:  query.set_data_buffer(name, my_u64);  break;
-            case TILEDB_FLOAT32: query.set_data_buffer(name, my_f32);  break;
-            case TILEDB_FLOAT64: query.set_data_buffer(name, my_f64);  break;
+            case TILEDB_CHAR:    query.set_data_buffer(name, my_char.data() + offset, len); break;
+            case TILEDB_INT8:    query.set_data_buffer(name, my_i8.data()   + offset, len); break;
+            case TILEDB_UINT8:   query.set_data_buffer(name, my_u8.data()   + offset, len); break;
+            case TILEDB_INT16:   query.set_data_buffer(name, my_i16.data()  + offset, len); break;
+            case TILEDB_UINT16:  query.set_data_buffer(name, my_u16.data()  + offset, len); break;
+            case TILEDB_INT32:   query.set_data_buffer(name, my_i32.data()  + offset, len); break;
+            case TILEDB_UINT32:  query.set_data_buffer(name, my_u32.data()  + offset, len); break;
+            case TILEDB_INT64:   query.set_data_buffer(name, my_i64.data()  + offset, len); break;
+            case TILEDB_UINT64:  query.set_data_buffer(name, my_u64.data()  + offset, len); break;
+            case TILEDB_FLOAT32: query.set_data_buffer(name, my_f32.data()  + offset, len); break;
+            case TILEDB_FLOAT64: query.set_data_buffer(name, my_f64.data()  + offset, len); break;
             default: break;
         }
     }
@@ -66,11 +66,28 @@ public:
             case TILEDB_INT16:   std::copy_n(my_i16.begin()  + offset, len, dest); break;
             case TILEDB_UINT16:  std::copy_n(my_u16.begin()  + offset, len, dest); break;
             case TILEDB_INT32:   std::copy_n(my_i32.begin()  + offset, len, dest); break;
-            case TILEDB_UINT32:  std::copy_n(my_u32,         + offset, len, dest); break;
+            case TILEDB_UINT32:  std::copy_n(my_u32.begin()  + offset, len, dest); break;
             case TILEDB_INT64:   std::copy_n(my_i64.begin()  + offset, len, dest); break;
             case TILEDB_UINT64:  std::copy_n(my_u64.begin()  + offset, len, dest); break;
             case TILEDB_FLOAT32: std::copy_n(my_f32.begin()  + offset, len, dest); break;
             case TILEDB_FLOAT64: std::copy_n(my_f64.begin()  + offset, len, dest); break;
+            default: break;
+        }
+    }
+
+    void shift(size_t from, size_t len, size_t to) {
+        switch (my_type) {
+            case TILEDB_CHAR:    std::copy_n(my_char.begin() + from, len, my_char.begin() + to); break;
+            case TILEDB_INT8:    std::copy_n(my_i8.begin()   + from, len, my_i8.begin()   + to); break;
+            case TILEDB_UINT8:   std::copy_n(my_u8.begin()   + from, len, my_u8.begin()   + to); break;
+            case TILEDB_INT16:   std::copy_n(my_i16.begin()  + from, len, my_i16.begin()  + to); break;
+            case TILEDB_UINT16:  std::copy_n(my_u16.begin()  + from, len, my_u16.begin()  + to); break;
+            case TILEDB_INT32:   std::copy_n(my_i32.begin()  + from, len, my_i32.begin()  + to); break;
+            case TILEDB_UINT32:  std::copy_n(my_u32.begin()  + from, len, my_u32.begin()  + to); break;
+            case TILEDB_INT64:   std::copy_n(my_i64.begin()  + from, len, my_i64.begin()  + to); break;
+            case TILEDB_UINT64:  std::copy_n(my_u64.begin()  + from, len, my_u64.begin()  + to); break;
+            case TILEDB_FLOAT32: std::copy_n(my_f32.begin()  + from, len, my_f32.begin()  + to); break;
+            case TILEDB_FLOAT64: std::copy_n(my_f64.begin()  + from, len, my_f64.begin()  + to); break;
             default: break;
         }
     }
@@ -93,7 +110,11 @@ private:
 
 class VariablyTypedDimension {
 public:
-    VariablyTypedDimension(const tiledb::Dimension& dim) : my_type(dim.type()) {
+    VariablyTypedDimension() = default;
+
+public:
+    void reset(const tiledb::Dimension& dim) {
+        my_type = dim.type();
         switch (my_type) {
             case TILEDB_INT8:    populate(dim, my_i8_start,  my_i8_end,  my_i8_tile);  break;
             case TILEDB_UINT8:   populate(dim, my_u8_start,  my_u8_end,  my_u8_tile);  break;
@@ -105,7 +126,7 @@ public:
             case TILEDB_UINT64:  populate(dim, my_u64_start, my_u64_end, my_u64_tile); break;
             case TILEDB_FLOAT32: populate(dim, my_f32_start, my_f32_end, my_f32_tile); break;
             case TILEDB_FLOAT64: populate(dim, my_f64_start, my_f64_end, my_f64_tile); break;
-            default: throw std::runtime_error("unknown TileDB datatype '" + std::to_string(type) + "'");
+            default: throw std::runtime_error("unknown TileDB datatype '" + std::to_string(my_type) + "'");
         }
     }
 
@@ -149,24 +170,24 @@ public:
     }
 
     template<typename Index_>
-    void add_range(tiledb::Query& query, Index_ start, Index_ length) const {
+    void add_range(tiledb::Subarray& subarray, int dim, Index_ start, Index_ length) const {
         switch (my_type) {
-            case TILEDB_INT8:    add(query, my_i8_start,  start, length);  break;
-            case TILEDB_UINT8:   add(query, my_u8_start,  start, length);  break;
-            case TILEDB_INT16:   add(query, my_i16_start, start, length); break;
-            case TILEDB_UINT16:  add(query, my_u16_start, start, length); break;
-            case TILEDB_INT32:   add(query, my_i32_start, start, length); break;
-            case TILEDB_UINT32:  add(query, my_u32_start, start, length); break;
-            case TILEDB_INT64:   add(query, my_i64_start, start, length); break;
-            case TILEDB_UINT64:  add(query, my_u64_start, start, length); break;
-            case TILEDB_FLOAT32: add(query, my_f32_start, start, length); break;
-            case TILEDB_FLOAT64: add(query, my_f64_start, start, length); break;
+            case TILEDB_INT8:    add(subarray, dim, my_i8_start,  start, length);  break;
+            case TILEDB_UINT8:   add(subarray, dim, my_u8_start,  start, length);  break;
+            case TILEDB_INT16:   add(subarray, dim, my_i16_start, start, length); break;
+            case TILEDB_UINT16:  add(subarray, dim, my_u16_start, start, length); break;
+            case TILEDB_INT32:   add(subarray, dim, my_i32_start, start, length); break;
+            case TILEDB_UINT32:  add(subarray, dim, my_u32_start, start, length); break;
+            case TILEDB_INT64:   add(subarray, dim, my_i64_start, start, length); break;
+            case TILEDB_UINT64:  add(subarray, dim, my_u64_start, start, length); break;
+            case TILEDB_FLOAT32: add(subarray, dim, my_f32_start, start, length); break;
+            case TILEDB_FLOAT64: add(subarray, dim, my_f64_start, start, length); break;
             default: break;
         }
     }
 
 private:
-    tiledb_datatype_t my_type;
+    tiledb_datatype_t my_type = TILEDB_INT32;
     int8_t   my_i8_start,  my_i8_end,  my_i8_tile;
     uint8_t  my_u8_start,  my_u8_end,  my_u8_tile;
     int16_t  my_i16_start, my_i16_end, my_i16_tile;
@@ -189,7 +210,7 @@ private:
 
     template<typename Index_, typename T>
     Index_ define_extent(T start, T end) const {
-        if constexpr(std::is_integer<T>::value && std::is_signed<T>::value) {
+        if constexpr(std::is_integral<T>::value && std::is_signed<T>::value) {
             if (start < 0 && end >= 0) {
                 // Avoid overflow in the 'T' or its promoted equivalent. This
                 // assumes that 'Index_' is actually large enough to store the
@@ -204,21 +225,21 @@ private:
     }
 
     template<typename T, typename Index_>
-    void add(tiledb::Query& query, T domain_start, Index_ range_start, Index_ range_length) const {
+    void add(tiledb::Subarray& subarray, int dim, T domain_start, Index_ range_start, Index_ range_length) const {
         // range_length had better be positive!
         --range_length;
 
-        if constexpr(std::is_integer<T>::value && std::is_signed<T>::value) {
+        if constexpr(std::is_integral<T>::value && std::is_signed<T>::value) {
             if (domain_start < 0) {
-                domain_end = safe_negative_add(domain_start, range_start + range_length);
+                T domain_end = safe_negative_add(domain_start, range_start + range_length);
                 domain_start = safe_negative_add(domain_start, range_start);
-                query.add_range(domain_start, domain_end);
+                subarray.add_range<T>(dim, domain_start, domain_end);
                 return;
             }
         }
 
         domain_start += range_start;
-        query.add_range(domain_start, domain_start + range_length);
+        subarray.add_range<T>(dim, domain_start, domain_start + range_length);
     }
 
     template<typename T, typename Index_>
