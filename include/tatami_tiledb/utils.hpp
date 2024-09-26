@@ -150,8 +150,9 @@ private:
 
     template<typename T, typename Index_>
     static T safe_negative_add(T l, Index_ r) {
-        // The general principle here is to get us to the point where we're dealing
-        // with two signed (or two unsigned) integers.
+        // The general principle here is to get us to the point where we're
+        // dealing with two signed (or two unsigned) integers that can be
+        // used in comparisons and arithmetic without surprises.
         if constexpr(std::is_signed<Index_>::value) {
             return l + r;
         } else {
