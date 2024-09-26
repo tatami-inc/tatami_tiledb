@@ -55,7 +55,7 @@ inline void execute_query(const Components& tdb_comp, const tiledb::Subarray& su
     tiledb::Query query(tdb_comp.ctx, tdb_comp.array);
     query.set_subarray(subarray);
     query.set_layout(row ? TILEDB_ROW_MAJOR : TILEDB_COL_MAJOR);
-    buffer.set(query, attribute, offset, length);
+    buffer.set_data_buffer(query, attribute, offset, length);
     if (query.submit() != tiledb::Query::Status::COMPLETE) {
         throw std::runtime_error("failed to read dense data from TileDB");
     }
@@ -164,15 +164,15 @@ private:
 public:
     template<typename Value_>
     const Value_* fetch_block(Index_ i, Index_ block_start, Value_* buffer) {
-        return fetch_raw(i, buffer, [&](Index_ j) {
-            extract_block(my_tdb_comp, my_attribute, my_row, my_tdb_target_dim, j, static_cast<Index_>(1), my_tdb_non_target_dim, block_start, my_non_target_length, my_holding, 0, my_non_target_length);
+        return fetch_raw(i, buffer, [&](Index_ i0) {
+            extract_block(my_tdb_comp, my_attribute, my_row, my_tdb_target_dim, i0, static_cast<Index_>(1), my_tdb_non_target_dim, block_start, my_non_target_length, my_holding, 0, my_non_target_length);
         });
     }
 
     template<typename Value_>
     const Value_* fetch_indices(Index_ i, const std::vector<Index_>& indices, Value_* buffer) {
-        return fetch_raw(i, buffer, [&](Index_ j) {
-            extract_indices(my_tdb_comp, my_attribute, my_row, my_tdb_target_dim, j, static_cast<Index_>(1), my_tdb_non_target_dim, indices, my_holding, 0, indices.size());
+        return fetch_raw(i, buffer, [&](Index_ i0) {
+            extract_indices(my_tdb_comp, my_attribute, my_row, my_tdb_target_dim, i0, static_cast<Index_>(1), my_tdb_non_target_dim, indices, my_holding, 0, indices.size());
         });
     }
 };

@@ -22,7 +22,15 @@ struct Components{
 // type - unlike HDF5, TileDB doesn't do this for us. 
 class VariablyTypedVector {
 public:
-    VariablyTypedVector(tiledb_datatype_t type, size_t len) : my_type(type) {
+    VariablyTypedVector() = default;
+
+    VariablyTypedVector(tiledb_datatype_t type, size_t len) {
+        reset(type, len);
+    }
+    
+public:
+    void reset(tiledb_datatype_t type, size_t len) {
+        my_type = type;
         switch (my_type) {
             case TILEDB_CHAR:    my_char.resize(len); break;
             case TILEDB_INT8:    my_i8.resize(len);   break;
@@ -40,7 +48,7 @@ public:
     }
 
 public:
-    void set(tiledb::Query& query, const std::string& name, size_t offset, size_t len) {
+    void set_data_buffer(tiledb::Query& query, const std::string& name, size_t offset, size_t len) {
         switch (my_type) {
             case TILEDB_CHAR:    query.set_data_buffer(name, my_char.data() + offset, len); break;
             case TILEDB_INT8:    query.set_data_buffer(name, my_i8.data()   + offset, len); break;
@@ -128,6 +136,10 @@ public:
             case TILEDB_FLOAT64: populate(dim, my_f64_start, my_f64_end, my_f64_tile); break;
             default: throw std::runtime_error("unknown TileDB datatype '" + std::to_string(my_type) + "'");
         }
+    }
+
+    tiledb_datatype_t type() const {
+        return my_type;
     }
 
 public:
