@@ -598,9 +598,6 @@ public:
                 throw std::runtime_error("TileDB array should have exactly two dimensions");
             }
 
-            // We use 'int' for the domain, just in case the domain's absolute
-            // position exceeds Index_'s range, even if the actual range of the
-            // domain does not.
             tiledb::Dimension first_dim = domain.dimension(0);
             my_tdb_first_dim.reset(first_dim);
             Index_ first_extent = my_tdb_first_dim.extent<Index_>();

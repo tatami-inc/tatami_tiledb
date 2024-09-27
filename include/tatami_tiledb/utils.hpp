@@ -272,6 +272,24 @@ private:
     }
 };
 
+inline size_t determine_type_size(tiledb_datatype_t type) {
+    size_t size = 0;
+    switch (type) {
+        case TILEDB_INT8:    size = 1; break;
+        case TILEDB_UINT8:   size = 1; break;  
+        case TILEDB_INT16:   size = 2; break; 
+        case TILEDB_UINT16:  size = 2; break; 
+        case TILEDB_INT32:   size = 4; break; 
+        case TILEDB_UINT32:  size = 4; break; 
+        case TILEDB_INT64:   size = 8; break; 
+        case TILEDB_UINT64:  size = 8; break; 
+        case TILEDB_FLOAT32: size = 4; break; 
+        case TILEDB_FLOAT64: size = 8; break; 
+        default: throw std::runtime_error("unknown TileDB datatype '" + std::to_string(type) + "'");
+    }
+    return size;
+}
+
 }
 
 }
