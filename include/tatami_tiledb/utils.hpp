@@ -38,8 +38,8 @@ public:
             case TILEDB_UINT32:  populate(dim, my_u32_start, my_u32_end, my_u32_tile); break;
             case TILEDB_INT64:   populate(dim, my_i64_start, my_i64_end, my_i64_tile); break;
             case TILEDB_UINT64:  populate(dim, my_u64_start, my_u64_end, my_u64_tile); break;
-            case TILEDB_FLOAT32: populate(dim, my_f32_start, my_f32_end, my_f32_tile); break;
-            case TILEDB_FLOAT64: populate(dim, my_f64_start, my_f64_end, my_f64_tile); break;
+
+            // I have no appetite to support the floating-point or date/time index types.
             default: throw std::runtime_error("unknown TileDB datatype '" + std::to_string(my_type) + "'");
         }
     }
@@ -61,8 +61,6 @@ public:
             case TILEDB_UINT32:  compute_delta(my_u32_start, &my_u32_end, 1, &output); break;
             case TILEDB_INT64:   compute_delta(my_i64_start, &my_i64_end, 1, &output); break;
             case TILEDB_UINT64:  compute_delta(my_u64_start, &my_u64_end, 1, &output); break;
-            case TILEDB_FLOAT32: compute_delta(my_f32_start, &my_f32_end, 1, &output); break;
-            case TILEDB_FLOAT64: compute_delta(my_f64_start, &my_f64_end, 1, &output); break;
             default: break;
         }
         return output + 1;
@@ -80,8 +78,6 @@ public:
             case TILEDB_UINT32:  output = my_u32_tile; break;
             case TILEDB_INT64:   output = my_i64_tile; break;
             case TILEDB_UINT64:  output = my_u64_tile; break;
-            case TILEDB_FLOAT32: output = my_f32_tile; break;
-            case TILEDB_FLOAT64: output = my_f64_tile; break;
             default: break;
         }
         return output;
@@ -98,8 +94,6 @@ public:
             case TILEDB_UINT32:  add(subarray, dim, my_u32_start, start, length); break;
             case TILEDB_INT64:   add(subarray, dim, my_i64_start, start, length); break;
             case TILEDB_UINT64:  add(subarray, dim, my_u64_start, start, length); break;
-            case TILEDB_FLOAT32: add(subarray, dim, my_f32_start, start, length); break;
-            case TILEDB_FLOAT64: add(subarray, dim, my_f64_start, start, length); break;
             default: break;
         }
     }
@@ -114,9 +108,7 @@ public:
         if constexpr(std::is_same<T, uint32_t>::value) { compute_delta(my_u32_start, val, len, output); return; }
         if constexpr(std::is_same<T, int64_t >::value) { compute_delta(my_i64_start, val, len, output); return; }
         if constexpr(std::is_same<T, uint64_t>::value) { compute_delta(my_u64_start, val, len, output); return; }
-        if constexpr(std::is_same<T, float   >::value) { compute_delta(my_f32_start, val, len, output); return; }
-        if constexpr(std::is_same<T, double  >::value) { compute_delta(my_f64_start, val, len, output); return; }
-        throw std::runtime_error("unsupported type for sanitization");
+        throw std::runtime_error("unsupported type for index correction");
     }
 
     template<typename Index_, typename T>
@@ -136,8 +128,6 @@ private:
     uint32_t my_u32_start, my_u32_end, my_u32_tile;
     int64_t  my_i64_start, my_i64_end, my_i64_tile;
     uint64_t my_u64_start, my_u64_end, my_u64_tile;
-    float    my_f32_start, my_f32_end, my_f32_tile;
-    double   my_f64_start, my_f64_end, my_f64_tile;
 
 private:
     template<typename T>
@@ -178,23 +168,35 @@ private:
     template<typename T, typename Index_>
     void add(tiledb::Subarray& subarray, int dim, T domain_start, Index_ range_start, Index_ range_length) const {
         // range_length had better be positive!
-        --range_length;
+        Index_ range_end = range_start + range_length - 1;
 
-        if constexpr(std::is_integral<T>::value && std::is_signed<T>::value && !std::is_signed<Index_>::value) {
+        if constexpr(!std::is_signed<T>::value && std::is_signed<Index_>::value) {
+            // Forcibly cast to an unsigned type to ensure that we get predictable integer promotion to the larger unsigned type during arithmetic.
+            // This is allowed as range_start and range_length are guaranteed to be non-negative.
+            typedef typename std::make_unsigned<Index_>::type UIndex;
+            subarray.add_range<T>(dim, domain_start + static_cast<UIndex>(range_start), domain_start + static_cast<UIndex>(range_end));
+            return;
+        }
+
+        if constexpr(std::is_signed<T>::value && !std::is_signed<Index_>::value) {
             if (domain_start < 0) {
-                Index_ range_end = range_start + range_length;
+                // Here, some care is required as we can't coerce domain_start to an unsigned Index_,
+                // nor can we coerce range_end to T as the latter might be too small.
                 T new_end = safe_negative_add(domain_start, range_end);
                 T new_start = safe_negative_add(domain_start, range_start);
                 subarray.add_range<T>(dim, new_start, new_end);
                 return;
+            } else {
+                // If domain_start is non-negative, the range of valid range_start and range_end is never to the right of domain_end.
+                // So if T was large enough to fit domain_end, it is damn well large enough to fit range_end.
+                subarray.add_range<T>(dim, domain_start + static_cast<T>(range_start), domain_start + static_cast<T>(range_end));
+                return;
             }
         }
 
-        // Simple addition is safe if:
-        // - T is unsigned, in which case it is guaranteed to fit all valid range_start and range_length.
-        // - both are signed, in which the sum will be auto-promoted to the larger integer type that is guaranteed to fit.
-        domain_start += range_start;
-        subarray.add_range<T>(dim, domain_start, domain_start + range_length);
+        // At this point, we're dealing with types of the same signedness, so we just let auto-promotion pick the larger type.
+        // This can't overflow for valid range_* because any addition cannot exceed domain_end that is known to fit into T.
+        subarray.add_range<T>(dim, domain_start + range_start, domain_start + range_end);
     }
 
     template<typename T, typename Index_>
@@ -206,6 +208,7 @@ private:
         if (ul < r) {
             return r - ul - 1;
         } else {
+            // Coercing it back to a signed value before negation.
             return -static_cast<T>(ul - r + 1);
         }
     }
