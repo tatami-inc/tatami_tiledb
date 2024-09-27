@@ -35,7 +35,12 @@ TEST_F(TiledbDimensionTest, Int32NegativeStart) {
     tatami_tiledb::internal::VariablyTypedDimension vdim(dim);
     EXPECT_EQ(vdim.extent<uint32_t>(), 4294967295u);
     EXPECT_EQ(vdim.tile<int>(), 100);
-    EXPECT_EQ(vdim.correct_index<int>(lower_bound), 0);
+
+    std::vector<int32_t> test_runs { lower_bound, 0, upper_bound };
+    std::vector<uint32_t> corrected(test_runs.size());
+    vdim.correct_indices(test_runs.data(), test_runs.size(), corrected.data());
+    std::vector<uint32_t> expected{ 0, 2147483647u, 4294967294u };
+    EXPECT_EQ(corrected, expected);
 
     auto array = create_array(dim);
 
@@ -81,7 +86,12 @@ TEST_F(TiledbDimensionTest, Int32ZeroStart) {
     tatami_tiledb::internal::VariablyTypedDimension vdim(dim);
     EXPECT_EQ(vdim.extent<uint32_t>(), 2147483648u);
     EXPECT_EQ(vdim.tile<int>(), 100);
-    EXPECT_EQ(vdim.correct_index<int>(0), 0);
+
+    std::vector<int32_t> test_runs { 0, 100, upper_bound };
+    std::vector<uint32_t> corrected(test_runs.size());
+    vdim.correct_indices(test_runs.data(), test_runs.size(), corrected.data());
+    std::vector<uint32_t> expected{ 0, 100u, 2147483647u };
+    EXPECT_EQ(corrected, expected);
 
     auto array = create_array(dim);
 
@@ -127,7 +137,12 @@ TEST_F(TiledbDimensionTest, Int32PositiveStart) {
     tatami_tiledb::internal::VariablyTypedDimension vdim(dim);
     EXPECT_EQ(vdim.extent<uint32_t>(), 2147482648u);
     EXPECT_EQ(vdim.tile<int>(), 100);
-    EXPECT_EQ(vdim.correct_index<int>(1000), 0);
+
+    std::vector<int32_t> test_runs { 1000, 2000, upper_bound };
+    std::vector<uint32_t> corrected(test_runs.size());
+    vdim.correct_indices(test_runs.data(), test_runs.size(), corrected.data());
+    std::vector<uint32_t> expected{ 0, 1000, 2147482647u };
+    EXPECT_EQ(corrected, expected);
 
     auto array = create_array(dim);
 
