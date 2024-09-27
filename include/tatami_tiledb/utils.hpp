@@ -18,104 +18,6 @@ struct Components{
     tiledb::Array array;
 };
 
-// Handling conversion from TileDB's storage type to our desired in-memory
-// type - unlike HDF5, TileDB doesn't do this for us. 
-class VariablyTypedVector {
-public:
-    VariablyTypedVector() = default;
-
-    VariablyTypedVector(tiledb_datatype_t type, size_t len) {
-        reset(type, len);
-    }
-    
-public:
-    void reset(tiledb_datatype_t type, size_t len) {
-        my_type = type;
-        switch (my_type) {
-            case TILEDB_CHAR:    my_char.resize(len); break;
-            case TILEDB_INT8:    my_i8.resize(len);   break;
-            case TILEDB_UINT8:   my_u8.resize(len);   break;
-            case TILEDB_INT16:   my_i16.resize(len);  break;
-            case TILEDB_UINT16:  my_u16.resize(len);  break;
-            case TILEDB_INT32:   my_i32.resize(len);  break;
-            case TILEDB_UINT32:  my_u32.resize(len);  break;
-            case TILEDB_INT64:   my_i64.resize(len);  break;
-            case TILEDB_UINT64:  my_u64.resize(len);  break;
-            case TILEDB_FLOAT32: my_f32.resize(len);  break;
-            case TILEDB_FLOAT64: my_f64.resize(len);  break;
-            default: throw std::runtime_error("unknown TileDB datatype '" + std::to_string(type) + "'");
-        }
-    }
-
-public:
-    void set_data_buffer(tiledb::Query& query, const std::string& name, size_t offset, size_t len) {
-        switch (my_type) {
-            case TILEDB_CHAR:    query.set_data_buffer(name, my_char.data() + offset, len); break;
-            case TILEDB_INT8:    query.set_data_buffer(name, my_i8.data()   + offset, len); break;
-            case TILEDB_UINT8:   query.set_data_buffer(name, my_u8.data()   + offset, len); break;
-            case TILEDB_INT16:   query.set_data_buffer(name, my_i16.data()  + offset, len); break;
-            case TILEDB_UINT16:  query.set_data_buffer(name, my_u16.data()  + offset, len); break;
-            case TILEDB_INT32:   query.set_data_buffer(name, my_i32.data()  + offset, len); break;
-            case TILEDB_UINT32:  query.set_data_buffer(name, my_u32.data()  + offset, len); break;
-            case TILEDB_INT64:   query.set_data_buffer(name, my_i64.data()  + offset, len); break;
-            case TILEDB_UINT64:  query.set_data_buffer(name, my_u64.data()  + offset, len); break;
-            case TILEDB_FLOAT32: query.set_data_buffer(name, my_f32.data()  + offset, len); break;
-            case TILEDB_FLOAT64: query.set_data_buffer(name, my_f64.data()  + offset, len); break;
-            default: break;
-        }
-    }
-
-    template<typename Value_>
-    void copy(size_t offset, size_t len, Value_* dest) const {
-        switch (my_type) {
-            case TILEDB_CHAR:    std::copy_n(my_char.begin() + offset, len, dest); break;
-            case TILEDB_INT8:    std::copy_n(my_i8.begin()   + offset, len, dest); break;
-            case TILEDB_UINT8:   std::copy_n(my_u8.begin()   + offset, len, dest); break;
-            case TILEDB_INT16:   std::copy_n(my_i16.begin()  + offset, len, dest); break;
-            case TILEDB_UINT16:  std::copy_n(my_u16.begin()  + offset, len, dest); break;
-            case TILEDB_INT32:   std::copy_n(my_i32.begin()  + offset, len, dest); break;
-            case TILEDB_UINT32:  std::copy_n(my_u32.begin()  + offset, len, dest); break;
-            case TILEDB_INT64:   std::copy_n(my_i64.begin()  + offset, len, dest); break;
-            case TILEDB_UINT64:  std::copy_n(my_u64.begin()  + offset, len, dest); break;
-            case TILEDB_FLOAT32: std::copy_n(my_f32.begin()  + offset, len, dest); break;
-            case TILEDB_FLOAT64: std::copy_n(my_f64.begin()  + offset, len, dest); break;
-            default: break;
-        }
-    }
-
-    void shift(size_t from, size_t len, size_t to) {
-        switch (my_type) {
-            case TILEDB_CHAR:    std::copy_n(my_char.begin() + from, len, my_char.begin() + to); break;
-            case TILEDB_INT8:    std::copy_n(my_i8.begin()   + from, len, my_i8.begin()   + to); break;
-            case TILEDB_UINT8:   std::copy_n(my_u8.begin()   + from, len, my_u8.begin()   + to); break;
-            case TILEDB_INT16:   std::copy_n(my_i16.begin()  + from, len, my_i16.begin()  + to); break;
-            case TILEDB_UINT16:  std::copy_n(my_u16.begin()  + from, len, my_u16.begin()  + to); break;
-            case TILEDB_INT32:   std::copy_n(my_i32.begin()  + from, len, my_i32.begin()  + to); break;
-            case TILEDB_UINT32:  std::copy_n(my_u32.begin()  + from, len, my_u32.begin()  + to); break;
-            case TILEDB_INT64:   std::copy_n(my_i64.begin()  + from, len, my_i64.begin()  + to); break;
-            case TILEDB_UINT64:  std::copy_n(my_u64.begin()  + from, len, my_u64.begin()  + to); break;
-            case TILEDB_FLOAT32: std::copy_n(my_f32.begin()  + from, len, my_f32.begin()  + to); break;
-            case TILEDB_FLOAT64: std::copy_n(my_f64.begin()  + from, len, my_f64.begin()  + to); break;
-            default: break;
-        }
-    }
-
-private:
-    tiledb_datatype_t my_type = TILEDB_INT32;
-
-    std::vector<char> my_char;
-    std::vector<int8_t> my_i8;
-    std::vector<uint8_t> my_u8;
-    std::vector<int16_t> my_i16;
-    std::vector<uint16_t> my_u16;
-    std::vector<int32_t> my_i32;
-    std::vector<uint32_t> my_u32;
-    std::vector<int64_t> my_i64;
-    std::vector<uint64_t> my_u64;
-    std::vector<float> my_f32;
-    std::vector<double> my_f64;
-};
-
 class VariablyTypedDimension {
 public:
     VariablyTypedDimension() = default;
@@ -184,8 +86,8 @@ public:
     template<typename Index_>
     void add_range(tiledb::Subarray& subarray, int dim, Index_ start, Index_ length) const {
         switch (my_type) {
-            case TILEDB_INT8:    add(subarray, dim, my_i8_start,  start, length);  break;
-            case TILEDB_UINT8:   add(subarray, dim, my_u8_start,  start, length);  break;
+            case TILEDB_INT8:    add(subarray, dim, my_i8_start,  start, length); break;
+            case TILEDB_UINT8:   add(subarray, dim, my_u8_start,  start, length); break;
             case TILEDB_INT16:   add(subarray, dim, my_i16_start, start, length); break;
             case TILEDB_UINT16:  add(subarray, dim, my_u16_start, start, length); break;
             case TILEDB_INT32:   add(subarray, dim, my_i32_start, start, length); break;
@@ -196,6 +98,22 @@ public:
             case TILEDB_FLOAT64: add(subarray, dim, my_f64_start, start, length); break;
             default: break;
         }
+    }
+
+    template<typename Index_, typename T>
+    Index_ sanitize(T val) const {
+        if constexpr(std::is_same<T, int8_t  >::value) { return define_extent<Index_>(my_i8_start,  val); }
+        if constexpr(std::is_same<T, uint8_t >::value) { return define_extent<Index_>(my_u8_start,  val); }
+        if constexpr(std::is_same<T, int16_t >::value) { return define_extent<Index_>(my_i16_start, val); }
+        if constexpr(std::is_same<T, uint16_t>::value) { return define_extent<Index_>(my_u16_start, val); }
+        if constexpr(std::is_same<T, int32_t >::value) { return define_extent<Index_>(my_i32_start, val); }
+        if constexpr(std::is_same<T, uint32_t>::value) { return define_extent<Index_>(my_u32_start, val); }
+        if constexpr(std::is_same<T, int64_t >::value) { return define_extent<Index_>(my_i64_start, val); }
+        if constexpr(std::is_same<T, uint64_t>::value) { return define_extent<Index_>(my_u64_start, val); }
+        if constexpr(std::is_same<T, float   >::value) { return define_extent<Index_>(my_f32_start, val); }
+        if constexpr(std::is_same<T, double  >::value) { return define_extent<Index_>(my_f64_start, val); }
+        throw std::runtime_error("unsupported type for sanitization");
+        return 0;
     }
 
 private:
@@ -289,6 +207,138 @@ inline size_t determine_type_size(tiledb_datatype_t type) {
     }
     return size;
 }
+
+// Handling conversion from TileDB's storage type to our desired in-memory
+// type - unlike HDF5, TileDB doesn't do this for us. 
+class VariablyTypedVector {
+public:
+    VariablyTypedVector() = default;
+
+    VariablyTypedVector(tiledb_datatype_t type, size_t len) {
+        reset(type, len);
+    }
+    
+public:
+    void reset(tiledb_datatype_t type, size_t len) {
+        my_type = type;
+        switch (my_type) {
+            case TILEDB_CHAR:    my_char.resize(len); break;
+            case TILEDB_INT8:    my_i8.resize(len);   break;
+            case TILEDB_UINT8:   my_u8.resize(len);   break;
+            case TILEDB_INT16:   my_i16.resize(len);  break;
+            case TILEDB_UINT16:  my_u16.resize(len);  break;
+            case TILEDB_INT32:   my_i32.resize(len);  break;
+            case TILEDB_UINT32:  my_u32.resize(len);  break;
+            case TILEDB_INT64:   my_i64.resize(len);  break;
+            case TILEDB_UINT64:  my_u64.resize(len);  break;
+            case TILEDB_FLOAT32: my_f32.resize(len);  break;
+            case TILEDB_FLOAT64: my_f64.resize(len);  break;
+            default: throw std::runtime_error("unknown TileDB datatype '" + std::to_string(type) + "'");
+        }
+    }
+
+public:
+    void set_data_buffer(tiledb::Query& query, const std::string& name, size_t offset, size_t len) {
+        switch (my_type) {
+            case TILEDB_CHAR:    query.set_data_buffer(name, my_char.data() + offset, len); break;
+            case TILEDB_INT8:    query.set_data_buffer(name, my_i8.data()   + offset, len); break;
+            case TILEDB_UINT8:   query.set_data_buffer(name, my_u8.data()   + offset, len); break;
+            case TILEDB_INT16:   query.set_data_buffer(name, my_i16.data()  + offset, len); break;
+            case TILEDB_UINT16:  query.set_data_buffer(name, my_u16.data()  + offset, len); break;
+            case TILEDB_INT32:   query.set_data_buffer(name, my_i32.data()  + offset, len); break;
+            case TILEDB_UINT32:  query.set_data_buffer(name, my_u32.data()  + offset, len); break;
+            case TILEDB_INT64:   query.set_data_buffer(name, my_i64.data()  + offset, len); break;
+            case TILEDB_UINT64:  query.set_data_buffer(name, my_u64.data()  + offset, len); break;
+            case TILEDB_FLOAT32: query.set_data_buffer(name, my_f32.data()  + offset, len); break;
+            case TILEDB_FLOAT64: query.set_data_buffer(name, my_f64.data()  + offset, len); break;
+            default: break;
+        }
+    }
+
+    template<typename Value_>
+    void copy(size_t offset, size_t len, Value_* dest) const {
+        switch (my_type) {
+            case TILEDB_CHAR:    std::copy_n(my_char.begin() + offset, len, dest); break;
+            case TILEDB_INT8:    std::copy_n(my_i8.begin()   + offset, len, dest); break;
+            case TILEDB_UINT8:   std::copy_n(my_u8.begin()   + offset, len, dest); break;
+            case TILEDB_INT16:   std::copy_n(my_i16.begin()  + offset, len, dest); break;
+            case TILEDB_UINT16:  std::copy_n(my_u16.begin()  + offset, len, dest); break;
+            case TILEDB_INT32:   std::copy_n(my_i32.begin()  + offset, len, dest); break;
+            case TILEDB_UINT32:  std::copy_n(my_u32.begin()  + offset, len, dest); break;
+            case TILEDB_INT64:   std::copy_n(my_i64.begin()  + offset, len, dest); break;
+            case TILEDB_UINT64:  std::copy_n(my_u64.begin()  + offset, len, dest); break;
+            case TILEDB_FLOAT32: std::copy_n(my_f32.begin()  + offset, len, dest); break;
+            case TILEDB_FLOAT64: std::copy_n(my_f64.begin()  + offset, len, dest); break;
+            default: break;
+        }
+    }
+
+    void shift(size_t from, size_t len, size_t to) {
+        switch (my_type) {
+            case TILEDB_CHAR:    std::copy_n(my_char.begin() + from, len, my_char.begin() + to); break;
+            case TILEDB_INT8:    std::copy_n(my_i8.begin()   + from, len, my_i8.begin()   + to); break;
+            case TILEDB_UINT8:   std::copy_n(my_u8.begin()   + from, len, my_u8.begin()   + to); break;
+            case TILEDB_INT16:   std::copy_n(my_i16.begin()  + from, len, my_i16.begin()  + to); break;
+            case TILEDB_UINT16:  std::copy_n(my_u16.begin()  + from, len, my_u16.begin()  + to); break;
+            case TILEDB_INT32:   std::copy_n(my_i32.begin()  + from, len, my_i32.begin()  + to); break;
+            case TILEDB_UINT32:  std::copy_n(my_u32.begin()  + from, len, my_u32.begin()  + to); break;
+            case TILEDB_INT64:   std::copy_n(my_i64.begin()  + from, len, my_i64.begin()  + to); break;
+            case TILEDB_UINT64:  std::copy_n(my_u64.begin()  + from, len, my_u64.begin()  + to); break;
+            case TILEDB_FLOAT32: std::copy_n(my_f32.begin()  + from, len, my_f32.begin()  + to); break;
+            case TILEDB_FLOAT64: std::copy_n(my_f64.begin()  + from, len, my_f64.begin()  + to); break;
+            default: break;
+        }
+    }
+
+    template<typename Index_>
+    void compact(size_t from, size_t len, const VariablyTypedDimension& dim, std::vector<std::pair<Index_, Index_> >& counts) const {
+        switch (my_type) {
+            case TILEDB_CHAR:    compact_internal(my_char, from, len, dim, counts); break;
+            case TILEDB_INT8:    compact_internal(my_i8,   from, len, dim, counts); break;
+            case TILEDB_UINT8:   compact_internal(my_u8,   from, len, dim, counts); break;
+            case TILEDB_INT16:   compact_internal(my_i16,  from, len, dim, counts); break;
+            case TILEDB_UINT16:  compact_internal(my_u16,  from, len, dim, counts); break;
+            case TILEDB_INT32:   compact_internal(my_i32,  from, len, dim, counts); break;
+            case TILEDB_UINT32:  compact_internal(my_u32,  from, len, dim, counts); break;
+            case TILEDB_INT64:   compact_internal(my_i64,  from, len, dim, counts); break;
+            case TILEDB_UINT64:  compact_internal(my_u64,  from, len, dim, counts); break;
+            case TILEDB_FLOAT32: compact_internal(my_f32,  from, len, dim, counts); break;
+            case TILEDB_FLOAT64: compact_internal(my_f64,  from, len, dim, counts); break;
+            default: break;
+        }
+    }
+
+private:
+    tiledb_datatype_t my_type = TILEDB_INT32;
+
+    std::vector<char> my_char;
+    std::vector<int8_t> my_i8;
+    std::vector<uint8_t> my_u8;
+    std::vector<int16_t> my_i16;
+    std::vector<uint16_t> my_u16;
+    std::vector<int32_t> my_i32;
+    std::vector<uint32_t> my_u32;
+    std::vector<int64_t> my_i64;
+    std::vector<uint64_t> my_u64;
+    std::vector<float> my_f32;
+    std::vector<double> my_f64;
+
+    template<typename T, typename Index_>
+    void compact_internal(const std::vector<T>& vals, size_t from, size_t len, const VariablyTypedDimension& dim, std::vector<std::pair<Index_, Index_> >& counts) const {
+        counts.clear();
+        if (len) {
+            auto last = vals[from];
+            counts.emplace_back(dim.sanitize<Index_>(last), 1);
+            ++from;
+            for (size_t end = from + len; from < end; ++from) {
+                if (last != vals[from]) {
+                    counts.emplace_back(dim.sanitize<Index_>(last), 1);
+                }
+                ++(counts.back().second);
+            }
+        }
+    }
+};
 
 }
 

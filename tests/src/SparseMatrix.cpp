@@ -295,7 +295,7 @@ protected:
 };
 
 TEST_F(SparseMatrixCachedTypeTest, Simple) {
-    std::unique_ptr<tatami::Matrix<int, size_t> > mat(new tatami_tiledb::SparseMatrix<int, size_t, double, int>(fpath, name, opt));
+    std::unique_ptr<tatami::Matrix<int, size_t> > mat(new tatami_tiledb::SparseMatrix<int, size_t>(fpath, name, opt));
     auto mext = mat->dense_row();
     std::shared_ptr<tatami::Matrix<int, size_t> > ref2 = tatami::make_DelayedCast<int, size_t>(ref);
     auto rext = ref2->dense_row();

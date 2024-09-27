@@ -410,7 +410,7 @@ private:
                 std::fill(contents.indptrs.begin(), contents.indptrs.end(), 0);
 
                 if (num_nonzero) {
-                    my_work.target_indices.compact(0, num_nonzero, my_counts);
+                    my_work.target_indices.compact(0, num_nonzero, my_tdb_target_dim, my_counts);
                     for (const auto& cnts : my_counts) {
                         contents.indptrs[cnts.first + 1] = cnts.second;
                     }
@@ -649,7 +649,7 @@ private:
                     );
                 });
 
-                my_work.target_indices.compact(running_offset, num_nonzero, my_counts);
+                my_work.target_indices.compact(running_offset, num_nonzero, my_tdb_target_dim, my_counts);
 
                 auto cIt = my_counts.begin(), cEnd = my_counts.end();
                 for (auto& si : to_populate) {
