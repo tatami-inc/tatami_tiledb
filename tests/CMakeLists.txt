@@ -25,11 +25,7 @@ endif()
 
 include(GoogleTest)
 
-macro(create_test target)
-    add_executable(${target}
-        src/DenseMatrix.cpp
-        src/SparseMatrix.cpp)
-
+macro(decorate_test target)
     target_link_libraries(${target} 
         gtest_main
         tatami_tiledb)
@@ -48,7 +44,16 @@ macro(create_test target)
     gtest_discover_tests(${target})
 endmacro()
 
-create_test(libtest)
+add_executable(libtest
+    src/DenseMatrix.cpp
+    src/SparseMatrix.cpp
+    src/utils.cpp
+)
+decorate_test(libtest)
 
-create_test(partest)
+add_executable(partest
+    src/DenseMatrix.cpp
+    src/SparseMatrix.cpp
+)
+decorate_test(partest)
 target_compile_definitions(partest PRIVATE TATAMI_TILEDB_TEST_PARALLEL=1)

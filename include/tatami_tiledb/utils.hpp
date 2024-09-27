@@ -22,6 +22,10 @@ class VariablyTypedDimension {
 public:
     VariablyTypedDimension() = default;
 
+    VariablyTypedDimension(const tiledb::Dimension& dim) {
+        reset(dim);
+    }
+
 public:
     void reset(const tiledb::Dimension& dim) {
         my_type = dim.type();
@@ -176,15 +180,19 @@ private:
         // range_length had better be positive!
         --range_length;
 
-        if constexpr(std::is_integral<T>::value && std::is_signed<T>::value) {
+        if constexpr(std::is_integral<T>::value && std::is_signed<T>::value && !std::is_signed<Index_>::value) {
             if (domain_start < 0) {
-                T domain_end = safe_negative_add(domain_start, range_start + range_length);
-                domain_start = safe_negative_add(domain_start, range_start);
-                subarray.add_range<T>(dim, domain_start, domain_end);
+                Index_ range_end = range_start + range_length;
+                T new_end = safe_negative_add(domain_start, range_end);
+                T new_start = safe_negative_add(domain_start, range_start);
+                subarray.add_range<T>(dim, new_start, new_end);
                 return;
             }
         }
 
+        // Simple addition is safe if:
+        // - T is unsigned, in which case it is guaranteed to fit all valid range_start and range_length.
+        // - both are signed, in which the sum will be auto-promoted to the larger integer type that is guaranteed to fit.
         domain_start += range_start;
         subarray.add_range<T>(dim, domain_start, domain_start + range_length);
     }
@@ -192,17 +200,13 @@ private:
     template<typename T, typename Index_>
     static T safe_negative_add(T l, Index_ r) {
         // The general principle here is to get us to the point where we're
-        // dealing with two signed (or two unsigned) integers that can be
-        // used in comparisons and arithmetic without surprises.
-        if constexpr(std::is_signed<Index_>::value) {
-            return l + r;
+        // dealing with two unsigned integers that can be used in comparisons
+        // and arithmetic without surprises.
+        typename std::make_unsigned<T>::type ul = -(l + 1);
+        if (ul < r) {
+            return r - ul - 1;
         } else {
-            typename std::make_unsigned<T>::type ul = -(l + 1);
-            if (ul < r) {
-                return r - ul - 1;
-            } else {
-                return ul - r + 1;
-            }
+            return -static_cast<T>(ul - r + 1);
         }
     }
 };
