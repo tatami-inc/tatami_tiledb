@@ -49,19 +49,19 @@ public:
     Index_ extent() const {
         Index_ output = 0;
         switch (my_type) {
-            case TILEDB_INT8:    output = define_extent<Index_>(my_i8_start,  my_i8_end);  break;
-            case TILEDB_UINT8:   output = define_extent<Index_>(my_u8_start,  my_u8_end);  break;
-            case TILEDB_INT16:   output = define_extent<Index_>(my_i16_start, my_i16_end); break;
-            case TILEDB_UINT16:  output = define_extent<Index_>(my_u16_start, my_u16_end); break;
-            case TILEDB_INT32:   output = define_extent<Index_>(my_i32_start, my_i32_end); break;
-            case TILEDB_UINT32:  output = define_extent<Index_>(my_u32_start, my_u32_end); break;
-            case TILEDB_INT64:   output = define_extent<Index_>(my_i64_start, my_i64_end); break;
-            case TILEDB_UINT64:  output = define_extent<Index_>(my_u64_start, my_u64_end); break;
-            case TILEDB_FLOAT32: output = define_extent<Index_>(my_f32_start, my_f32_end); break;
-            case TILEDB_FLOAT64: output = define_extent<Index_>(my_f64_start, my_f64_end); break;
+            case TILEDB_INT8:    compute_delta(my_i8_start,  &my_i8_end,  1, &output); break;
+            case TILEDB_UINT8:   compute_delta(my_u8_start,  &my_u8_end,  1, &output); break;
+            case TILEDB_INT16:   compute_delta(my_i16_start, &my_i16_end, 1, &output); break;
+            case TILEDB_UINT16:  compute_delta(my_u16_start, &my_u16_end, 1, &output); break;
+            case TILEDB_INT32:   compute_delta(my_i32_start, &my_i32_end, 1, &output); break;
+            case TILEDB_UINT32:  compute_delta(my_u32_start, &my_u32_end, 1, &output); break;
+            case TILEDB_INT64:   compute_delta(my_i64_start, &my_i64_end, 1, &output); break;
+            case TILEDB_UINT64:  compute_delta(my_u64_start, &my_u64_end, 1, &output); break;
+            case TILEDB_FLOAT32: compute_delta(my_f32_start, &my_f32_end, 1, &output); break;
+            case TILEDB_FLOAT64: compute_delta(my_f64_start, &my_f64_end, 1, &output); break;
             default: break;
         }
-        return output;
+        return output + 1;
     }
 
     template<typename Index_>
@@ -101,19 +101,25 @@ public:
     }
 
     template<typename Index_, typename T>
-    Index_ sanitize(T val) const {
-        if constexpr(std::is_same<T, int8_t  >::value) { return define_extent<Index_>(my_i8_start,  val); }
-        if constexpr(std::is_same<T, uint8_t >::value) { return define_extent<Index_>(my_u8_start,  val); }
-        if constexpr(std::is_same<T, int16_t >::value) { return define_extent<Index_>(my_i16_start, val); }
-        if constexpr(std::is_same<T, uint16_t>::value) { return define_extent<Index_>(my_u16_start, val); }
-        if constexpr(std::is_same<T, int32_t >::value) { return define_extent<Index_>(my_i32_start, val); }
-        if constexpr(std::is_same<T, uint32_t>::value) { return define_extent<Index_>(my_u32_start, val); }
-        if constexpr(std::is_same<T, int64_t >::value) { return define_extent<Index_>(my_i64_start, val); }
-        if constexpr(std::is_same<T, uint64_t>::value) { return define_extent<Index_>(my_u64_start, val); }
-        if constexpr(std::is_same<T, float   >::value) { return define_extent<Index_>(my_f32_start, val); }
-        if constexpr(std::is_same<T, double  >::value) { return define_extent<Index_>(my_f64_start, val); }
+    void correct_indices(const T* val, size_t len, Index_* output) const {
+        if constexpr(std::is_same<T, int8_t  >::value) { compute_delta(my_i8_start,  val, len, output); return; }
+        if constexpr(std::is_same<T, uint8_t >::value) { compute_delta(my_u8_start,  val, len, output); return; }
+        if constexpr(std::is_same<T, int16_t >::value) { compute_delta(my_i16_start, val, len, output); return; }
+        if constexpr(std::is_same<T, uint16_t>::value) { compute_delta(my_u16_start, val, len, output); return; }
+        if constexpr(std::is_same<T, int32_t >::value) { compute_delta(my_i32_start, val, len, output); return; }
+        if constexpr(std::is_same<T, uint32_t>::value) { compute_delta(my_u32_start, val, len, output); return; }
+        if constexpr(std::is_same<T, int64_t >::value) { compute_delta(my_i64_start, val, len, output); return; }
+        if constexpr(std::is_same<T, uint64_t>::value) { compute_delta(my_u64_start, val, len, output); return; }
+        if constexpr(std::is_same<T, float   >::value) { compute_delta(my_f32_start, val, len, output); return; }
+        if constexpr(std::is_same<T, double  >::value) { compute_delta(my_f64_start, val, len, output); return; }
         throw std::runtime_error("unsupported type for sanitization");
-        return 0;
+    }
+
+    template<typename Index_, typename T>
+    Index_ correct_index(T val) const {
+        Index_ output;
+        correct_indices(&val, 1, &output);
+        return output;
     }
 
 private:
@@ -139,19 +145,30 @@ private:
     }
 
     template<typename Index_, typename T>
-    Index_ define_extent(T start, T end) const {
+    void compute_delta(T start, const T* pos, size_t len, Index_* output) const {
         if constexpr(std::is_integral<T>::value && std::is_signed<T>::value) {
-            if (start < 0 && end >= 0) {
-                // Avoid overflow in the 'T' or its promoted equivalent. This
-                // assumes that 'Index_' is actually large enough to store the
-                // extent (and thus both 'end' and '-start-1'). It doesn't
-                // assume that 'Index_' is signed, hence the if().
-                return static_cast<Index_>(end) + static_cast<Index_>(-(start + 1)) + 2;
+            if (start < 0) {
+                Index_ flipped = -(start + 1);
+                for (size_t i = 0; i < len; ++i) {
+                    auto curpos = pos[i];
+                    if (curpos >= 0) {
+                        // Avoid overflow in the 'T' or its promoted equivalent. This
+                        // assumes that 'Index_' is actually large enough to store the
+                        // extent (and thus both 'pos' and '-(start+1)'). It doesn't
+                        // assume that 'Index_' is signed, hence the if().
+                        output[i] = static_cast<Index_>(curpos) + flipped + 1;
+                    } else {
+                        output[i] = curpos - start;
+                    }
+                }
             }
         }
 
-        // If start and end are the same sign, it's guaranteed not to overflow.
-        return static_cast<Index_>(end - start) + 1;
+        // All elements of pos should be greater than or equal to 'start', so if 'start >= 0',
+        // then 'pos[i] >= 0' and we can freely subtract without worrying about overflow.
+        for (size_t i = 0; i < len; ++i) {
+            output[i] = pos[i] - start;
+        }
     }
 
     template<typename T, typename Index_>
@@ -290,6 +307,25 @@ public:
         }
     }
 
+    template<typename Value_>
+    void copy(size_t offset, size_t len, const VariablyTypedDimension& dim, Value_* dest) const {
+        switch (my_type) {
+            case TILEDB_CHAR:    dim.correct_indices(my_char.data() + offset, len, dest); break;
+            case TILEDB_INT8:    dim.correct_indices(my_i8.data()   + offset, len, dest); break;
+            case TILEDB_UINT8:   dim.correct_indices(my_u8.data()   + offset, len, dest); break;
+            case TILEDB_INT16:   dim.correct_indices(my_i16.data()  + offset, len, dest); break;
+            case TILEDB_UINT16:  dim.correct_indices(my_u16.data()  + offset, len, dest); break;
+            case TILEDB_INT32:   dim.correct_indices(my_i32.data()  + offset, len, dest); break;
+            case TILEDB_UINT32:  dim.correct_indices(my_u32.data()  + offset, len, dest); break;
+            case TILEDB_INT64:   dim.correct_indices(my_i64.data()  + offset, len, dest); break;
+            case TILEDB_UINT64:  dim.correct_indices(my_u64.data()  + offset, len, dest); break;
+            case TILEDB_FLOAT32: dim.correct_indices(my_f32.data()  + offset, len, dest); break;
+            case TILEDB_FLOAT64: dim.correct_indices(my_f64.data()  + offset, len, dest); break;
+            default: break;
+        }
+    }
+
+
     template<typename Index_>
     void compact(size_t from, size_t len, const VariablyTypedDimension& dim, std::vector<std::pair<Index_, Index_> >& counts) const {
         switch (my_type) {
@@ -326,16 +362,15 @@ private:
     template<typename T, typename Index_>
     void compact_internal(const std::vector<T>& vals, size_t from, size_t len, const VariablyTypedDimension& dim, std::vector<std::pair<Index_, Index_> >& counts) const {
         counts.clear();
-        if (len) {
-            auto last = vals[from];
-            counts.emplace_back(dim.sanitize<Index_>(last), 1);
+        size_t end = from + len;
+        while (from < end) {
+            T last = vals[from];
+            Index_ count = 1;
             ++from;
-            for (size_t end = from + len; from < end; ++from) {
-                if (last != vals[from]) {
-                    counts.emplace_back(dim.sanitize<Index_>(last), 1);
-                }
-                ++(counts.back().second);
+            for (; from < end && last == vals[from]; ++from) {
+                ++count;
             }
+            counts.emplace_back(dim.correct_index<Index_>(last), count);
         }
     }
 };

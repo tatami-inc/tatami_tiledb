@@ -298,12 +298,12 @@ TEST_F(SparseMatrixCachedTypeTest, Simple) {
     std::unique_ptr<tatami::Matrix<int, size_t> > mat(new tatami_tiledb::SparseMatrix<int, size_t>(fpath, name, opt));
     auto mext = mat->dense_row();
     std::shared_ptr<tatami::Matrix<int, size_t> > ref2 = tatami::make_DelayedCast<int, size_t>(ref);
-    auto rext = ref2->dense_row();
+    auto rext2 = ref2->dense_row();
 
     for (size_t r = 0; r < NR; ++r) {
         auto mvec = tatami_test::fetch(mext.get(), r, NC);
-        auto rvec = tatami_test::fetch(rext.get(), r, NC);
-        EXPECT_EQ(mvec, rvec);
+        auto rvec2 = tatami_test::fetch(rext2.get(), r, NC);
+        EXPECT_EQ(mvec, rvec2);
     }
 }
 

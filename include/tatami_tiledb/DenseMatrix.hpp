@@ -584,14 +584,14 @@ public:
                 throw std::runtime_error("TileDB array should be dense");
             }
 
-            my_cache_size_in_elements = static_cast<double>(options.maximum_cache_size) / sizeof(Value_);
-            my_require_minimum_cache = options.require_minimum_cache;
-
             if (!schema.has_attribute(my_attribute)) {
                 throw std::runtime_error("no attribute '" + my_attribute + "' is present in the TileDB array");
             }
             auto attr = schema.attribute(my_attribute);
             my_tdb_type = attr.type();
+
+            my_cache_size_in_elements = options.maximum_cache_size / internal::determine_type_size(my_tdb_type);
+            my_require_minimum_cache = options.require_minimum_cache;
 
             tiledb::Domain domain = schema.domain();
             if (domain.ndim() != 2) {
