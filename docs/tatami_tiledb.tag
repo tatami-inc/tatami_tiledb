@@ -1,139 +1,130 @@
 <?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
-<tagfile doxygen_version="1.9.5">
+<tagfile doxygen_version="1.9.8">
   <compound kind="file">
-    <name>make_TileDbMatrix.hpp</name>
-    <path>/github/workspace/include/tatami_tiledb/</path>
-    <filename>make__TileDbMatrix_8hpp.html</filename>
+    <name>DenseMatrix.hpp</name>
+    <path>tatami_tiledb/</path>
+    <filename>DenseMatrix_8hpp.html</filename>
+    <class kind="struct">tatami_tiledb::DenseMatrixOptions</class>
+    <class kind="class">tatami_tiledb::DenseMatrix</class>
     <namespace>tatami_tiledb</namespace>
-    <member kind="function">
-      <type>std::shared_ptr&lt; tatami::Matrix&lt; Value_, Index_ &gt; &gt;</type>
-      <name>make_TileDbMatrix</name>
-      <anchorfile>namespacetatami__tiledb.html</anchorfile>
-      <anchor>a956c942c27f3c33e0a134d0b98a868c8</anchor>
-      <arglist>(std::string uri, std::string attribute, const TileDbOptions &amp;options)</arglist>
-    </member>
-    <member kind="function">
-      <type>std::shared_ptr&lt; tatami::Matrix&lt; Value_, Index_ &gt; &gt;</type>
-      <name>make_TileDbMatrix</name>
-      <anchorfile>namespacetatami__tiledb.html</anchorfile>
-      <anchor>aec5503d305a2770e006d02b2fe3c6175</anchor>
-      <arglist>(std::string uri, std::string attribute)</arglist>
-    </member>
+  </compound>
+  <compound kind="file">
+    <name>serialize.hpp</name>
+    <path>tatami_tiledb/</path>
+    <filename>serialize_8hpp.html</filename>
+    <namespace>tatami_tiledb</namespace>
+  </compound>
+  <compound kind="file">
+    <name>SparseMatrix.hpp</name>
+    <path>tatami_tiledb/</path>
+    <filename>SparseMatrix_8hpp.html</filename>
+    <class kind="struct">tatami_tiledb::SparseMatrixOptions</class>
+    <class kind="class">tatami_tiledb::SparseMatrix</class>
+    <namespace>tatami_tiledb</namespace>
   </compound>
   <compound kind="file">
     <name>tatami_tiledb.hpp</name>
-    <path>/github/workspace/include/tatami_tiledb/</path>
+    <path>tatami_tiledb/</path>
     <filename>tatami__tiledb_8hpp.html</filename>
     <namespace>tatami_tiledb</namespace>
   </compound>
-  <compound kind="file">
-    <name>TileDbDenseMatrix.hpp</name>
-    <path>/github/workspace/include/tatami_tiledb/</path>
-    <filename>TileDbDenseMatrix_8hpp.html</filename>
-    <class kind="class">tatami_tiledb::TileDbDenseMatrix</class>
-    <namespace>tatami_tiledb</namespace>
-  </compound>
-  <compound kind="file">
-    <name>TileDbOptions.hpp</name>
-    <path>/github/workspace/include/tatami_tiledb/</path>
-    <filename>TileDbOptions_8hpp.html</filename>
-    <class kind="struct">tatami_tiledb::TileDbOptions</class>
-    <namespace>tatami_tiledb</namespace>
-  </compound>
-  <compound kind="file">
-    <name>TileDbSparseMatrix.hpp</name>
-    <path>/github/workspace/include/tatami_tiledb/</path>
-    <filename>TileDbSparseMatrix_8hpp.html</filename>
-    <class kind="class">tatami_tiledb::TileDbSparseMatrix</class>
-    <namespace>tatami_tiledb</namespace>
-  </compound>
   <compound kind="class">
-    <name>tatami_tiledb::TileDbDenseMatrix</name>
-    <filename>classtatami__tiledb_1_1TileDbDenseMatrix.html</filename>
+    <name>tatami_tiledb::DenseMatrix</name>
+    <filename>classtatami__tiledb_1_1DenseMatrix.html</filename>
     <templarg>typename Value_</templarg>
     <templarg>typename Index_</templarg>
-    <templarg>bool transpose_</templarg>
-    <base>VirtualDenseMatrix&lt; Value_, Index_ &gt;</base>
+    <base>Matrix&lt; Value_, Index_ &gt;</base>
     <member kind="function">
       <type></type>
-      <name>TileDbDenseMatrix</name>
-      <anchorfile>classtatami__tiledb_1_1TileDbDenseMatrix.html</anchorfile>
-      <anchor>a6490c9a8d2a4740ba27056e9b93accf0</anchor>
-      <arglist>(std::string uri, std::string attribute, const TileDbOptions &amp;options)</arglist>
+      <name>DenseMatrix</name>
+      <anchorfile>classtatami__tiledb_1_1DenseMatrix.html</anchorfile>
+      <anchor>a714b717e3c234454a12bd18e5a7c1d3c</anchor>
+      <arglist>(const std::string &amp;uri, std::string attribute, const DenseMatrixOptions &amp;options)</arglist>
     </member>
     <member kind="function">
       <type></type>
-      <name>TileDbDenseMatrix</name>
-      <anchorfile>classtatami__tiledb_1_1TileDbDenseMatrix.html</anchorfile>
-      <anchor>a320af27404e12340609d394b7324be39</anchor>
-      <arglist>(std::string uri, std::string attribute)</arglist>
+      <name>DenseMatrix</name>
+      <anchorfile>classtatami__tiledb_1_1DenseMatrix.html</anchorfile>
+      <anchor>ad3a8e80f5bc695fe4938ec41d5f9b45a</anchor>
+      <arglist>(const std::string &amp;uri, std::string attribute)</arglist>
     </member>
   </compound>
   <compound kind="struct">
-    <name>tatami_tiledb::TileDbOptions</name>
-    <filename>structtatami__tiledb_1_1TileDbOptions.html</filename>
+    <name>tatami_tiledb::DenseMatrixOptions</name>
+    <filename>structtatami__tiledb_1_1DenseMatrixOptions.html</filename>
     <member kind="variable">
       <type>size_t</type>
       <name>maximum_cache_size</name>
-      <anchorfile>structtatami__tiledb_1_1TileDbOptions.html</anchorfile>
-      <anchor>a318b648466b3dd661475bd672fbc1211</anchor>
+      <anchorfile>structtatami__tiledb_1_1DenseMatrixOptions.html</anchorfile>
+      <anchor>a48fa577abbde5514e1a35c3941fbe810</anchor>
       <arglist></arglist>
     </member>
     <member kind="variable">
       <type>bool</type>
       <name>require_minimum_cache</name>
-      <anchorfile>structtatami__tiledb_1_1TileDbOptions.html</anchorfile>
-      <anchor>a8fec7a4cd15cace444af6c3fb3c9f7da</anchor>
+      <anchorfile>structtatami__tiledb_1_1DenseMatrixOptions.html</anchorfile>
+      <anchor>a019938987bd2dfd3a9c9e5137678c504</anchor>
       <arglist></arglist>
     </member>
   </compound>
   <compound kind="class">
-    <name>tatami_tiledb::TileDbSparseMatrix</name>
-    <filename>classtatami__tiledb_1_1TileDbSparseMatrix.html</filename>
+    <name>tatami_tiledb::SparseMatrix</name>
+    <filename>classtatami__tiledb_1_1SparseMatrix.html</filename>
     <templarg>typename Value_</templarg>
     <templarg>typename Index_</templarg>
-    <templarg>bool transpose_</templarg>
     <base>Matrix&lt; Value_, Index_ &gt;</base>
     <member kind="function">
       <type></type>
-      <name>TileDbSparseMatrix</name>
-      <anchorfile>classtatami__tiledb_1_1TileDbSparseMatrix.html</anchorfile>
-      <anchor>ae876ac63c20f62517e79b24c30e05a65</anchor>
-      <arglist>(std::string uri, std::string attribute, const TileDbOptions &amp;options)</arglist>
+      <name>SparseMatrix</name>
+      <anchorfile>classtatami__tiledb_1_1SparseMatrix.html</anchorfile>
+      <anchor>a5ee3846a5281cd9f8316c0cb60fa1855</anchor>
+      <arglist>(const std::string &amp;uri, std::string attribute, const SparseMatrixOptions &amp;options)</arglist>
     </member>
     <member kind="function">
       <type></type>
-      <name>TileDbSparseMatrix</name>
-      <anchorfile>classtatami__tiledb_1_1TileDbSparseMatrix.html</anchorfile>
-      <anchor>a31faad0efecbec021fade3e97506ff91</anchor>
-      <arglist>(std::string uri, std::string attribute)</arglist>
+      <name>SparseMatrix</name>
+      <anchorfile>classtatami__tiledb_1_1SparseMatrix.html</anchorfile>
+      <anchor>ab0b5f4f04116d20e26f4d44e0260909e</anchor>
+      <arglist>(const std::string &amp;uri, std::string attribute)</arglist>
+    </member>
+  </compound>
+  <compound kind="struct">
+    <name>tatami_tiledb::SparseMatrixOptions</name>
+    <filename>structtatami__tiledb_1_1SparseMatrixOptions.html</filename>
+    <member kind="variable">
+      <type>size_t</type>
+      <name>maximum_cache_size</name>
+      <anchorfile>structtatami__tiledb_1_1SparseMatrixOptions.html</anchorfile>
+      <anchor>a7c809c3c948980fb7b7216bb73180a9f</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>require_minimum_cache</name>
+      <anchorfile>structtatami__tiledb_1_1SparseMatrixOptions.html</anchorfile>
+      <anchor>aadbd63a4c848f631692ffc5f4ef75578</anchor>
+      <arglist></arglist>
     </member>
   </compound>
   <compound kind="namespace">
     <name>tatami_tiledb</name>
     <filename>namespacetatami__tiledb.html</filename>
-    <class kind="class">tatami_tiledb::TileDbDenseMatrix</class>
-    <class kind="struct">tatami_tiledb::TileDbOptions</class>
-    <class kind="class">tatami_tiledb::TileDbSparseMatrix</class>
+    <class kind="class">tatami_tiledb::DenseMatrix</class>
+    <class kind="struct">tatami_tiledb::DenseMatrixOptions</class>
+    <class kind="class">tatami_tiledb::SparseMatrix</class>
+    <class kind="struct">tatami_tiledb::SparseMatrixOptions</class>
     <member kind="function">
-      <type>std::shared_ptr&lt; tatami::Matrix&lt; Value_, Index_ &gt; &gt;</type>
-      <name>make_TileDbMatrix</name>
+      <type>void</type>
+      <name>serialize</name>
       <anchorfile>namespacetatami__tiledb.html</anchorfile>
-      <anchor>a956c942c27f3c33e0a134d0b98a868c8</anchor>
-      <arglist>(std::string uri, std::string attribute, const TileDbOptions &amp;options)</arglist>
-    </member>
-    <member kind="function">
-      <type>std::shared_ptr&lt; tatami::Matrix&lt; Value_, Index_ &gt; &gt;</type>
-      <name>make_TileDbMatrix</name>
-      <anchorfile>namespacetatami__tiledb.html</anchorfile>
-      <anchor>aec5503d305a2770e006d02b2fe3c6175</anchor>
-      <arglist>(std::string uri, std::string attribute)</arglist>
+      <anchor>a63671723fdbc1325860b48d9b629dd2c</anchor>
+      <arglist>(Function_ fun)</arglist>
     </member>
   </compound>
   <compound kind="page">
     <name>index</name>
     <title>tatami for TileDB matrices</title>
     <filename>index.html</filename>
-    <docanchor file="index.html">md__github_workspace_README</docanchor>
+    <docanchor file="index.html">md__2github_2workspace_2README</docanchor>
   </compound>
 </tagfile>

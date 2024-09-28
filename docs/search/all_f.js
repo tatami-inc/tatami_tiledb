@@ -1,9 +1,13 @@
 var searchData=
 [
-  ['value_0',['value',['https://tatami-inc.github.io/tatami/structtatami_1_1CompressedSparseContents.html#a42f014b8d8da15e6c49511db087bebf7',1,'tatami::CompressedSparseContents::value()'],['https://tatami-inc.github.io/tatami/structtatami_1_1FragmentedSparseContents.html#a24193eb145792effdc67d3e1425f1cd2',1,'tatami::FragmentedSparseContents::value()'],['https://tatami-inc.github.io/tatami/structtatami_1_1SparseRange.html#a6bd0dcad11850847dd8dd336e1932732',1,'tatami::SparseRange::value()'],['https://tatami-inc.github.io/tatami/structtatami_1_1SparseRangeCopy.html#a6f924c14d5830aedf2d175b850099b45',1,'tatami::SparseRangeCopy::value()']]],
-  ['value_5ftype_1',['value_type',['https://tatami-inc.github.io/tatami/structtatami_1_1SomeNumericArray_1_1Iterator.html#a452df712534d47fdb8543805affd038b',1,'tatami::SomeNumericArray::Iterator::value_type()'],['https://tatami-inc.github.io/tatami/classtatami_1_1Matrix.html#a5b783d3ab440b7696c635a4b16516ba8',1,'tatami::Matrix::value_type()']]],
-  ['variances_2ehpp_2',['variances.hpp',['https://tatami-inc.github.io/tatami/variances_8hpp.html',1,'']]],
-  ['virtualdensematrix_3',['VirtualDenseMatrix',['https://tatami-inc.github.io/tatami/classtatami_1_1VirtualDenseMatrix.html',1,'tatami']]],
-  ['virtualdensematrix_2ehpp_4',['VirtualDenseMatrix.hpp',['https://tatami-inc.github.io/tatami/VirtualDenseMatrix_8hpp.html',1,'']]],
-  ['virtualdensematrix_3c_20value_5f_2c_20index_5f_20_3e_5',['VirtualDenseMatrix&lt; Value_, Index_ &gt;',['https://tatami-inc.github.io/tatami/classtatami_1_1VirtualDenseMatrix.html',1,'tatami']]]
+  ['tatami_0',['tatami',['https://tatami-inc.github.io/tatami/namespacetatami.html',1,'']]],
+  ['tatami_20for_20tiledb_20matrices_1',['tatami for TileDB matrices',['../index.html',1,'']]],
+  ['tatami_2ehpp_2',['tatami.hpp',['https://tatami-inc.github.io/tatami/tatami_8hpp.html',1,'']]],
+  ['tatami_3a_3asomenumericarray_3',['SomeNumericArray',['https://tatami-inc.github.io/tatami/structtatami_1_1SomeNumericArray_1_1Iterator.html',1,'tatami']]],
+  ['tatami_5ftiledb_4',['tatami_tiledb',['../namespacetatami__tiledb.html',1,'']]],
+  ['tatami_5ftiledb_2ehpp_5',['tatami_tiledb.hpp',['../tatami__tiledb_8hpp.html',1,'']]],
+  ['tiledb_20matrices_6',['tatami for TileDB matrices',['../index.html',1,'']]],
+  ['total_7',['total',['https://tatami-inc.github.io/tatami/classtatami_1_1ConsecutiveOracle.html#aade9b656fa50f1b41f52486a70591d58',1,'tatami::ConsecutiveOracle::total()'],['https://tatami-inc.github.io/tatami/classtatami_1_1FixedVectorOracle.html#aee8f5bfa07d50e1b1689652543342572',1,'tatami::FixedVectorOracle::total()'],['https://tatami-inc.github.io/tatami/classtatami_1_1FixedViewOracle.html#aa858ead22df2b721fd723a9509ac28f9',1,'tatami::FixedViewOracle::total()'],['https://tatami-inc.github.io/tatami/classtatami_1_1Oracle.html#a611f0c44f1b3de3ec065c91ada017808',1,'tatami::Oracle::total()']]],
+  ['transpose_8',['transpose',['https://tatami-inc.github.io/tatami/namespacetatami.html#a07c1d1f96ea3a59d9f6106b17873d494',1,'tatami::transpose(const Input_ *input, size_t nrow, size_t ncol, size_t input_stride, Output_ *output, size_t output_stride)'],['https://tatami-inc.github.io/tatami/namespacetatami.html#a86be7b06c9d13b25f9ff04eed87430a7',1,'tatami::transpose(const Input_ *input, size_t nrow, size_t ncol, Output_ *output)']]],
+  ['transpose_2ehpp_9',['transpose.hpp',['https://tatami-inc.github.io/tatami/transpose_8hpp.html',1,'']]]
 ];

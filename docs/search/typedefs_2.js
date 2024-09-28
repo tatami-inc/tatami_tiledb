@@ -1,6 +1,5 @@
 var searchData=
 [
-  ['densecolumnmatrix_0',['DenseColumnMatrix',['https://tatami-inc.github.io/tatami/namespacetatami.html#ac47a769e00660eb7e9b5fcd543bcf2d3',1,'tatami']]],
-  ['denserowmatrix_1',['DenseRowMatrix',['https://tatami-inc.github.io/tatami/namespacetatami.html#a51122d20490b377cd3f4609cc044f314',1,'tatami']]],
-  ['difference_5ftype_2',['difference_type',['https://tatami-inc.github.io/tatami/structtatami_1_1SomeNumericArray_1_1Iterator.html#ae2439d56ee9c796afae3b07f70e1c3b1',1,'tatami::SomeNumericArray::Iterator']]]
+  ['index_5ftype_0',['index_type',['https://tatami-inc.github.io/tatami/classtatami_1_1Matrix.html#adebf536caf3a3c1751eefc6e10f0b16e',1,'tatami::Matrix']]],
+  ['iterator_5fcategory_1',['iterator_category',['https://tatami-inc.github.io/tatami/structtatami_1_1SomeNumericArray_1_1Iterator.html#a238f3650db5dcdbeda260dd12522ada0',1,'tatami::SomeNumericArray::Iterator']]]
 ];
