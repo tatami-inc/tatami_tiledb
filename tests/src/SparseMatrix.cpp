@@ -17,7 +17,9 @@ public:
         return ::testing::Values(
             std::pair<int, int>(NR, 1),
             std::pair<int, int>(1, NC),
-            std::make_pair(7, 7) // using tile sizes that are a little odd to check for off-by-one errors.
+            std::make_pair(7, 7), // using tile sizes that are a little odd to check for off-by-one errors.
+            std::make_pair(13, 4),
+            std::make_pair(5, 10)
         );
     }
 

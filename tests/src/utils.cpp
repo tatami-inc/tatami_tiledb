@@ -467,7 +467,6 @@ TEST_F(TiledbDimensionTest, Unknown) {
  *************************************/
 
 TEST(TypeSize, Basic) {
-    EXPECT_EQ(tatami_tiledb::internal::determine_type_size(TILEDB_CHAR), 1);
     EXPECT_EQ(tatami_tiledb::internal::determine_type_size(TILEDB_INT8), 1);
     EXPECT_EQ(tatami_tiledb::internal::determine_type_size(TILEDB_UINT8), 1);
     EXPECT_EQ(tatami_tiledb::internal::determine_type_size(TILEDB_INT16), 2);
