@@ -43,7 +43,7 @@ If you're using CMake, you just need to add something like this to your `CMakeLi
 include(FetchContent)
 
 FetchContent_Declare(
-  tatami
+  tatami_tiledb
   GIT_REPOSITORY https://github.com/tatami-inc/tatami_tiledb
   GIT_TAG master # or any version of interest
 )
