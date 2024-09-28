@@ -21,12 +21,12 @@ jobs:
           }
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Get latest CMake
       uses: lukka/get-cmake@latest
 
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       id: cache
       with:
         path: libtiledb
@@ -51,7 +51,15 @@ jobs:
     - name: Run the tests
       run: |
         cd build
-        ctest
+        # Avoid using ctest because it's so slow; it starts a
+        # new process for each individual test, which is crazy.
+        for exe in $(ctest --show-only=json-v1 | jq -r ".tests[] | .command | .[0]"  | sort | uniq)
+        do
+            echo "#### RUNNING ${exe} ####"
+            echo 
+            ${exe} --gtest_brief=1
+            echo
+        done 
 
     - name: Generate code coverage
       if: ${{ matrix.config.cov }}
@@ -61,6 +69,8 @@ jobs:
 
     - name: Upload to Codecov
       if: ${{ matrix.config.cov }}
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         directory: build/tests/CMakeFiles/
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

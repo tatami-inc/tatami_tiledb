@@ -18,14 +18,14 @@ include(CheckIncludeFiles)
 check_include_files(filesystem HAVE_CXX_FS)
 
 set(CODE_COVERAGE OFF CACHE BOOL "Enable coverage testing")
+set(DO_CODE_COVERAGE OFF)
+if(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set(DO_CODE_COVERAGE ON)
+endif()
 
 include(GoogleTest)
 
-macro(create_test target)
-    add_executable(${target}
-        src/TileDbDenseMatrix.cpp
-        src/TileDbSparseMatrix.cpp)
-
+macro(decorate_test target)
     target_link_libraries(${target} 
         gtest_main
         tatami_tiledb)
@@ -34,9 +34,9 @@ macro(create_test target)
         target_link_libraries(${target} stdc++fs)
     endif()
 
-    target_compile_options(${target} PRIVATE -Wall -Wpedantic -Wextra)
+    target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
 
-    if(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    if(DO_CODE_COVERAGE)
         target_compile_options(${target} PRIVATE -O0 -g --coverage)
         target_link_options(${target} PRIVATE --coverage)
     endif()
@@ -44,11 +44,16 @@ macro(create_test target)
     gtest_discover_tests(${target})
 endmacro()
 
-create_test(libtest)
+add_executable(libtest
+    src/DenseMatrix.cpp
+    src/SparseMatrix.cpp
+    src/utils.cpp
+)
+decorate_test(libtest)
 
-# Checking whether to test OpenMP support. 
-find_package(OpenMP)
-if (OpenMP_FOUND)
-    create_test(omptest)
-    target_link_libraries(omptest OpenMP::OpenMP_CXX)
-endif()
+add_executable(partest
+    src/DenseMatrix.cpp
+    src/SparseMatrix.cpp
+)
+decorate_test(partest)
+target_compile_definitions(partest PRIVATE TATAMI_TILEDB_TEST_PARALLEL=1)
