@@ -322,12 +322,9 @@ public:
             case TILEDB_UINT32:  dim.correct_indices(my_u32.data()  + offset, len, dest); break;
             case TILEDB_INT64:   dim.correct_indices(my_i64.data()  + offset, len, dest); break;
             case TILEDB_UINT64:  dim.correct_indices(my_u64.data()  + offset, len, dest); break;
-            case TILEDB_FLOAT32: dim.correct_indices(my_f32.data()  + offset, len, dest); break;
-            case TILEDB_FLOAT64: dim.correct_indices(my_f64.data()  + offset, len, dest); break;
-            default: break;
+            default: throw std::runtime_error("unsupported type for copying with index correction");
         }
     }
-
 
     template<typename Index_>
     void compact(size_t from, size_t len, const VariablyTypedDimension& dim, std::vector<std::pair<Index_, Index_> >& counts) const {
@@ -340,9 +337,7 @@ public:
             case TILEDB_UINT32:  compact_internal(my_u32,  from, len, dim, counts); break;
             case TILEDB_INT64:   compact_internal(my_i64,  from, len, dim, counts); break;
             case TILEDB_UINT64:  compact_internal(my_u64,  from, len, dim, counts); break;
-            case TILEDB_FLOAT32: compact_internal(my_f32,  from, len, dim, counts); break;
-            case TILEDB_FLOAT64: compact_internal(my_f64,  from, len, dim, counts); break;
-            default: break;
+            default: throw std::runtime_error("unsupported type for index compaction");
         }
     }
 
