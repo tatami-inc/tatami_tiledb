@@ -1,8 +1,16 @@
-#ifndef TATAMI_TILEDB_TEST_PARALLEL
 #include <gtest/gtest.h>
 #include "tatami_tiledb/tatami_tiledb.hpp"
 #include "tatami_test/temp_file_path.hpp"
+#include "tatami_test/tatami_test.hpp"
+
 #include <cstdint>
+#include <vector>
+#include <string>
+#include <filesystem>
+#include <numeric>
+
+/*************************************
+ *************************************/
 
 class TiledbDimensionTest : public ::testing::Test {
 protected:
@@ -438,4 +446,192 @@ TEST_F(TiledbDimensionTest, Uint64Simple) {
     }
 }
 
-#endif
+TEST_F(TiledbDimensionTest, Unknown) {
+    {
+        auto dim = tiledb::Dimension::create<double>(ctx, "foo", {{ 0, 1000 }}, 100);
+        tatami_test::throws_error([&]() {
+            tatami_tiledb::internal::VariablyTypedDimension vdim(dim);
+        }, "unknown");
+    }
+
+    {
+        auto dim = tiledb::Dimension::create<int64_t>(ctx, "foo", {{ 0, 1000 }}, 100);
+        tatami_tiledb::internal::VariablyTypedDimension vdim(dim);
+        tatami_test::throws_error([&]() {
+            vdim.correct_index<int>(10.0); 
+        }, "unsupported");
+    }
+}
+
+/*************************************
+ *************************************/
+
+TEST(TypeSize, Basic) {
+    EXPECT_EQ(tatami_tiledb::internal::determine_type_size(TILEDB_CHAR), 1);
+    EXPECT_EQ(tatami_tiledb::internal::determine_type_size(TILEDB_INT8), 1);
+    EXPECT_EQ(tatami_tiledb::internal::determine_type_size(TILEDB_UINT8), 1);
+    EXPECT_EQ(tatami_tiledb::internal::determine_type_size(TILEDB_INT16), 2);
+    EXPECT_EQ(tatami_tiledb::internal::determine_type_size(TILEDB_UINT16), 2);
+    EXPECT_EQ(tatami_tiledb::internal::determine_type_size(TILEDB_INT32), 4);
+    EXPECT_EQ(tatami_tiledb::internal::determine_type_size(TILEDB_UINT32), 4);
+    EXPECT_EQ(tatami_tiledb::internal::determine_type_size(TILEDB_INT64), 8);
+    EXPECT_EQ(tatami_tiledb::internal::determine_type_size(TILEDB_UINT64), 8);
+    EXPECT_EQ(tatami_tiledb::internal::determine_type_size(TILEDB_FLOAT32), 4);
+    EXPECT_EQ(tatami_tiledb::internal::determine_type_size(TILEDB_FLOAT64), 8);
+
+    tatami_test::throws_error([&]() {
+        tatami_tiledb::internal::determine_type_size(TILEDB_BLOB);
+    }, "unknown");
+}
+
+/*************************************
+ *************************************/
+
+class TiledbVectorTest : public ::testing::Test {
+protected:
+    tiledb::Context ctx;
+    inline static std::string fpath;
+
+    static void SetUpTestSuite() {
+        fpath = tatami_test::temp_file_path("tatami-vec-test");
+    }
+
+    template<typename Type_>
+    void run_basic_test(tiledb_datatype_t tdb_type) {
+        {
+            tiledb::Domain domain(ctx);
+            domain.add_dimension(tiledb::Dimension::create<int>(ctx, "rows", {{0, 9}}, 10));
+            tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
+            schema.set_domain(domain);
+            schema.add_attribute(tiledb::Attribute::create<Type_>(ctx, "WHEE"));
+
+            std::filesystem::remove_all(fpath);
+            tiledb::Array::create(fpath, schema);
+
+            tiledb::Array array(ctx, fpath, TILEDB_WRITE);
+            tiledb::Query query(ctx, array);
+
+            tiledb::Subarray subarray(ctx, array);
+            subarray.add_range<int>(0, 0, 9);
+            query.set_subarray(subarray);
+
+            std::vector<Type_> values(10);
+            std::iota(values.begin(), values.end(), 0);
+
+            query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("WHEE", values);
+            query.submit();
+            query.finalize();
+            array.close();
+        }
+
+        tiledb::Array array(ctx, fpath, TILEDB_READ);
+        tiledb::Query query(ctx, array);
+        tiledb::Subarray subarray(ctx, array);
+        subarray.add_range<int>(0, 3, 8);
+        query.set_subarray(subarray);
+
+        tatami_tiledb::internal::VariablyTypedVector vec(tdb_type, 10);
+        vec.set_data_buffer(query, "WHEE", 3, 6);
+
+        query.set_layout(TILEDB_ROW_MAJOR);
+        query.submit();
+        query.finalize();
+
+        std::vector<double> test(10);
+        vec.copy(5, 5, test.data() + 5);
+        {
+            std::vector<double> expected{ 0, 0, 0, 0, 0, 5, 6, 7, 8, 0 };
+            EXPECT_EQ(expected, test);
+        }
+
+        std::fill(test.begin(), test.end(), 0);
+        vec.copy(0, 5, test.data());
+        {
+            std::vector<double> expected{ 0, 0, 0, 3, 4, 0, 0, 0, 0, 0 };
+            EXPECT_EQ(expected, test);
+        }
+
+        vec.shift(5, 3, 0);
+        vec.copy(0, 10, test.data());
+        {
+            std::vector<double> expected{ 5, 6, 7, 3, 4, 5, 6, 7, 8, 0 };
+            EXPECT_EQ(expected, test);
+        }
+    }
+
+    template<typename Index_>
+    void run_index_test(tiledb_datatype_t tdb_type) {
+        auto dim = tiledb::Dimension::create<Index_>(ctx, "rows", {{10, 19}}, 10);
+
+        {
+            tiledb::Domain domain(ctx);
+            domain.add_dimension(dim);
+            tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
+            schema.set_domain(domain);
+            schema.add_attribute(tiledb::Attribute::create<Index_>(ctx, "WHEE"));
+
+            std::filesystem::remove_all(fpath);
+            tiledb::Array::create(fpath, schema);
+
+            tiledb::Array array(ctx, fpath, TILEDB_WRITE);
+            tiledb::Query query(ctx, array);
+
+            tiledb::Subarray subarray(ctx, array);
+            subarray.add_range<Index_>(0, 10, 19);
+            query.set_subarray(subarray);
+
+            std::vector<Index_> values { 10, 11, 11, 12, 12, 12, 13, 13, 13, 13 };
+            query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("WHEE", values);
+            query.submit();
+            query.finalize();
+            array.close();
+        }
+
+        tiledb::Array array(ctx, fpath, TILEDB_READ);
+        tiledb::Query query(ctx, array);
+        tiledb::Subarray subarray(ctx, array);
+        subarray.add_range<Index_>(0, 10, 19);
+        query.set_subarray(subarray);
+
+        tatami_tiledb::internal::VariablyTypedVector vec(tdb_type, 10);
+        vec.set_data_buffer(query, "WHEE", 0, 10);
+
+        query.set_layout(TILEDB_ROW_MAJOR);
+        query.submit();
+        query.finalize();
+
+        std::vector<double> test(10);
+        vec.copy(0, 10, dim, test.data());
+        std::vector<double> expected{ 0, 1, 1, 2, 2, 2, 3, 3, 3, 3 };
+        EXPECT_EQ(expected, test);
+
+        std::vector<std::pair<int, int> > counts;
+        vec.compact(0, 10, dim, counts);
+        std::vector<std::pair<int, int> > expected_counts { { 0, 1 }, { 1, 2 }, { 2, 3 }, { 3, 4} };
+        EXPECT_EQ(counts, expected_counts);
+    }
+};
+
+TEST_F(TiledbVectorTest, Basic) {
+    run_basic_test<int8_t>(TILEDB_INT8);
+    run_basic_test<uint8_t>(TILEDB_UINT8);
+    run_basic_test<int16_t>(TILEDB_INT16);
+    run_basic_test<uint16_t>(TILEDB_UINT16);
+    run_basic_test<int32_t>(TILEDB_INT32);
+    run_basic_test<uint32_t>(TILEDB_UINT32);
+    run_basic_test<int64_t>(TILEDB_INT64);
+    run_basic_test<uint64_t>(TILEDB_UINT64);
+    run_basic_test<float>(TILEDB_FLOAT32);
+    run_basic_test<double>(TILEDB_FLOAT64);
+}
+
+TEST_F(TiledbVectorTest, Index) {
+    run_index_test<int8_t>(TILEDB_INT8);
+    run_index_test<uint8_t>(TILEDB_UINT8);
+    run_index_test<int16_t>(TILEDB_INT16);
+    run_index_test<uint16_t>(TILEDB_UINT16);
+    run_index_test<int32_t>(TILEDB_INT32);
+    run_index_test<uint32_t>(TILEDB_UINT32);
+    run_index_test<int64_t>(TILEDB_INT64);
+    run_index_test<uint64_t>(TILEDB_UINT64);
+}

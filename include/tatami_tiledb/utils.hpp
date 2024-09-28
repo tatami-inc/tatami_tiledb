@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <stdexcept>
 #include <limits>
+#include <vector>
 
 namespace tatami_tiledb {
 
@@ -246,7 +247,6 @@ public:
     void reset(tiledb_datatype_t type, size_t len) {
         my_type = type;
         switch (my_type) {
-            case TILEDB_CHAR:    my_char.resize(len); break;
             case TILEDB_INT8:    my_i8.resize(len);   break;
             case TILEDB_UINT8:   my_u8.resize(len);   break;
             case TILEDB_INT16:   my_i16.resize(len);  break;
@@ -264,7 +264,6 @@ public:
 public:
     void set_data_buffer(tiledb::Query& query, const std::string& name, size_t offset, size_t len) {
         switch (my_type) {
-            case TILEDB_CHAR:    query.set_data_buffer(name, my_char.data() + offset, len); break;
             case TILEDB_INT8:    query.set_data_buffer(name, my_i8.data()   + offset, len); break;
             case TILEDB_UINT8:   query.set_data_buffer(name, my_u8.data()   + offset, len); break;
             case TILEDB_INT16:   query.set_data_buffer(name, my_i16.data()  + offset, len); break;
@@ -282,7 +281,6 @@ public:
     template<typename Value_>
     void copy(size_t offset, size_t len, Value_* dest) const {
         switch (my_type) {
-            case TILEDB_CHAR:    std::copy_n(my_char.begin() + offset, len, dest); break;
             case TILEDB_INT8:    std::copy_n(my_i8.begin()   + offset, len, dest); break;
             case TILEDB_UINT8:   std::copy_n(my_u8.begin()   + offset, len, dest); break;
             case TILEDB_INT16:   std::copy_n(my_i16.begin()  + offset, len, dest); break;
@@ -299,7 +297,6 @@ public:
 
     void shift(size_t from, size_t len, size_t to) {
         switch (my_type) {
-            case TILEDB_CHAR:    std::copy_n(my_char.begin() + from, len, my_char.begin() + to); break;
             case TILEDB_INT8:    std::copy_n(my_i8.begin()   + from, len, my_i8.begin()   + to); break;
             case TILEDB_UINT8:   std::copy_n(my_u8.begin()   + from, len, my_u8.begin()   + to); break;
             case TILEDB_INT16:   std::copy_n(my_i16.begin()  + from, len, my_i16.begin()  + to); break;
@@ -317,7 +314,6 @@ public:
     template<typename Value_>
     void copy(size_t offset, size_t len, const VariablyTypedDimension& dim, Value_* dest) const {
         switch (my_type) {
-            case TILEDB_CHAR:    dim.correct_indices(my_char.data() + offset, len, dest); break;
             case TILEDB_INT8:    dim.correct_indices(my_i8.data()   + offset, len, dest); break;
             case TILEDB_UINT8:   dim.correct_indices(my_u8.data()   + offset, len, dest); break;
             case TILEDB_INT16:   dim.correct_indices(my_i16.data()  + offset, len, dest); break;
@@ -336,7 +332,6 @@ public:
     template<typename Index_>
     void compact(size_t from, size_t len, const VariablyTypedDimension& dim, std::vector<std::pair<Index_, Index_> >& counts) const {
         switch (my_type) {
-            case TILEDB_CHAR:    compact_internal(my_char, from, len, dim, counts); break;
             case TILEDB_INT8:    compact_internal(my_i8,   from, len, dim, counts); break;
             case TILEDB_UINT8:   compact_internal(my_u8,   from, len, dim, counts); break;
             case TILEDB_INT16:   compact_internal(my_i16,  from, len, dim, counts); break;
