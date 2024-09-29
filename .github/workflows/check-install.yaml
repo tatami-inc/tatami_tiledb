@@ -11,23 +11,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Get latest CMake
       uses: lukka/get-cmake@latest
 
-    - name: Install tatami_chunked
-      run: |
-        git clone https://github.com/tatami-inc/tatami_chunked dep-tatami_chunked --depth=1
-        cd dep-tatami_chunked
-        cmake -S . -B build -DTATAMI_CHUNKED_TESTS=OFF
-        sudo cmake --install build
-
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       id: cache
       with:
         path: libtiledb
-        key: tiledb-2.15.3
+        key: tiledb-2.26.2
 
     - name: Install TileDB
       if: steps.cache.outputs.cache-hit != 'true'
@@ -35,11 +28,11 @@ jobs:
         sudo apt-get install wget
         mkdir libtiledb
         cd libtiledb
-        wget https://github.com/TileDB-Inc/TileDB/releases/download/2.15.3/tiledb-linux-x86_64-2.15.3-689bea0.tar.gz -O tiledb.tar.gz
+        wget https://github.com/TileDB-Inc/TileDB/releases/download/2.26.2/tiledb-linux-x86_64-2.26.2-30fc114.tar.gz -O tiledb.tar.gz
         tar -xvf tiledb.tar.gz
 
     - name: Configure the build
-      run: cmake -S . -B build -DTATAMI_TILEDB_FETCH_EXTERN=OFF -DTATAMI_TILEDB_TESTS=OFF -DCMAKE_PREFIX_PATH=libtiledb
+      run: cmake -S . -B build -DTATAMI_TILEDB_TESTS=OFF -DCMAKE_PREFIX_PATH=libtiledb
 
     - name: Install the library
       run: sudo cmake --install build

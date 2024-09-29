@@ -30,7 +30,7 @@ jobs:
       id: cache
       with:
         path: libtiledb
-        key: tiledb-2.15.3
+        key: tiledb-2.26.2
 
     - name: Install TileDB
       if: steps.cache.outputs.cache-hit != 'true'
@@ -38,7 +38,7 @@ jobs:
         sudo apt-get install wget
         mkdir libtiledb
         cd libtiledb
-        wget https://github.com/TileDB-Inc/TileDB/releases/download/2.15.3/tiledb-linux-x86_64-2.15.3-689bea0.tar.gz -O tiledb.tar.gz
+        wget https://github.com/TileDB-Inc/TileDB/releases/download/2.26.2/tiledb-linux-x86_64-2.26.2-30fc114.tar.gz -O tiledb.tar.gz
         tar -xvf tiledb.tar.gz
 
     - name: Configure the build with coverage
