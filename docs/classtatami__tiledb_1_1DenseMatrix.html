@@ -109,6 +109,8 @@ Collaboration diagram for tatami_tiledb::DenseMatrix&lt; Value_, Index_ &gt;:</d
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
+<tr class="memitem:a45797084654f5dff590d3d7feeb17ad4" id="r_a45797084654f5dff590d3d7feeb17ad4"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtatami__tiledb_1_1DenseMatrix.html#a45797084654f5dff590d3d7feeb17ad4">DenseMatrix</a> (const std::string &amp;uri, std::string attribute, tiledb::Context ctx, const <a class="el" href="structtatami__tiledb_1_1DenseMatrixOptions.html">DenseMatrixOptions</a> &amp;options)</td></tr>
+<tr class="separator:a45797084654f5dff590d3d7feeb17ad4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a714b717e3c234454a12bd18e5a7c1d3c" id="r_a714b717e3c234454a12bd18e5a7c1d3c"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtatami__tiledb_1_1DenseMatrix.html#a714b717e3c234454a12bd18e5a7c1d3c">DenseMatrix</a> (const std::string &amp;uri, std::string attribute, const <a class="el" href="structtatami__tiledb_1_1DenseMatrixOptions.html">DenseMatrixOptions</a> &amp;options)</td></tr>
 <tr class="separator:a714b717e3c234454a12bd18e5a7c1d3c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad3a8e80f5bc695fe4938ec41d5f9b45a" id="r_ad3a8e80f5bc695fe4938ec41d5f9b45a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtatami__tiledb_1_1DenseMatrix.html#ad3a8e80f5bc695fe4938ec41d5f9b45a">DenseMatrix</a> (const std::string &amp;uri, std::string attribute)</td></tr>
@@ -368,8 +370,67 @@ class tatami_tiledb::DenseMatrix&lt; Value_, Index_ &gt;</div><p>TileDB-backed d
 <p>Numeric dense matrix stored in a 2-dimensional TileDB array. Chunks of data are loaded from file as needed by <code><a class="elRef" href="https://tatami-inc.github.io/tatami/namespacetatami.html#af01c93a616eb99f6a17861a8b19f7ee0">tatami::Extractor</a></code> objects, with additional caching to avoid repeated reads from disk. The size of cached chunks is determined by the extent of the tiles in the TileDB array.</p>
 <p>The TileDB library is thread-safe so no additional work is required to use this class in parallel code. Nonetheless, users can force all calls to TileDB to occur in serial by defining the <code>TATAMI_TILEDB_PARALLEL_LOCK</code> macro. This should be a function-like macro that accepts a function and executes it inside a user-defined serial section. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="a45797084654f5dff590d3d7feeb17ad4" name="a45797084654f5dff590d3d7feeb17ad4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a45797084654f5dff590d3d7feeb17ad4">&#9670;&#160;</a></span>DenseMatrix() <span class="overload">[1/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;typename Value_ , typename Index_ &gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classtatami__tiledb_1_1DenseMatrix.html">tatami_tiledb::DenseMatrix</a>&lt; Value_, Index_ &gt;::DenseMatrix </td>
+          <td>(</td>
+          <td class="paramtype">const std::string &amp;&#160;</td>
+          <td class="paramname"><em>uri</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::string&#160;</td>
+          <td class="paramname"><em>attribute</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">tiledb::Context&#160;</td>
+          <td class="paramname"><em>ctx</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structtatami__tiledb_1_1DenseMatrixOptions.html">DenseMatrixOptions</a> &amp;&#160;</td>
+          <td class="paramname"><em>options</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">uri</td><td>File path (or some other appropriate location) of the TileDB array. </td></tr>
+    <tr><td class="paramname">attribute</td><td>Name of the attribute containing the data of interest. </td></tr>
+    <tr><td class="paramname">context</td><td>A <b>TileDB</b> <code>Context</code> object, typically with some custom configuration. </td></tr>
+    <tr><td class="paramname">options</td><td>Further options. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
 <a id="a714b717e3c234454a12bd18e5a7c1d3c" name="a714b717e3c234454a12bd18e5a7c1d3c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a714b717e3c234454a12bd18e5a7c1d3c">&#9670;&#160;</a></span>DenseMatrix() <span class="overload">[1/2]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a714b717e3c234454a12bd18e5a7c1d3c">&#9670;&#160;</a></span>DenseMatrix() <span class="overload">[2/3]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -421,7 +482,7 @@ template&lt;typename Value_ , typename Index_ &gt; </div>
 </div>
 </div>
 <a id="ad3a8e80f5bc695fe4938ec41d5f9b45a" name="ad3a8e80f5bc695fe4938ec41d5f9b45a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad3a8e80f5bc695fe4938ec41d5f9b45a">&#9670;&#160;</a></span>DenseMatrix() <span class="overload">[2/2]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#ad3a8e80f5bc695fe4938ec41d5f9b45a">&#9670;&#160;</a></span>DenseMatrix() <span class="overload">[3/3]</span></h2>
 
 <div class="memitem">
 <div class="memproto">

@@ -38,6 +38,13 @@
       <type></type>
       <name>DenseMatrix</name>
       <anchorfile>classtatami__tiledb_1_1DenseMatrix.html</anchorfile>
+      <anchor>a45797084654f5dff590d3d7feeb17ad4</anchor>
+      <arglist>(const std::string &amp;uri, std::string attribute, tiledb::Context ctx, const DenseMatrixOptions &amp;options)</arglist>
+    </member>
+    <member kind="function">
+      <type></type>
+      <name>DenseMatrix</name>
+      <anchorfile>classtatami__tiledb_1_1DenseMatrix.html</anchorfile>
       <anchor>a714b717e3c234454a12bd18e5a7c1d3c</anchor>
       <arglist>(const std::string &amp;uri, std::string attribute, const DenseMatrixOptions &amp;options)</arglist>
     </member>
@@ -73,6 +80,13 @@
     <templarg>typename Value_</templarg>
     <templarg>typename Index_</templarg>
     <base>Matrix&lt; Value_, Index_ &gt;</base>
+    <member kind="function">
+      <type></type>
+      <name>SparseMatrix</name>
+      <anchorfile>classtatami__tiledb_1_1SparseMatrix.html</anchorfile>
+      <anchor>afbe309f2fe08bd91cc5b9188e88a73ec</anchor>
+      <arglist>(const std::string &amp;uri, std::string attribute, tiledb::Context ctx, const SparseMatrixOptions &amp;options)</arglist>
+    </member>
     <member kind="function">
       <type></type>
       <name>SparseMatrix</name>

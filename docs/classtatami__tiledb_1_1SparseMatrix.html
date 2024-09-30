@@ -109,6 +109,8 @@ Collaboration diagram for tatami_tiledb::SparseMatrix&lt; Value_, Index_ &gt;:</
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
+<tr class="memitem:afbe309f2fe08bd91cc5b9188e88a73ec" id="r_afbe309f2fe08bd91cc5b9188e88a73ec"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtatami__tiledb_1_1SparseMatrix.html#afbe309f2fe08bd91cc5b9188e88a73ec">SparseMatrix</a> (const std::string &amp;uri, std::string attribute, tiledb::Context ctx, const <a class="el" href="structtatami__tiledb_1_1SparseMatrixOptions.html">SparseMatrixOptions</a> &amp;options)</td></tr>
+<tr class="separator:afbe309f2fe08bd91cc5b9188e88a73ec"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5ee3846a5281cd9f8316c0cb60fa1855" id="r_a5ee3846a5281cd9f8316c0cb60fa1855"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtatami__tiledb_1_1SparseMatrix.html#a5ee3846a5281cd9f8316c0cb60fa1855">SparseMatrix</a> (const std::string &amp;uri, std::string attribute, const <a class="el" href="structtatami__tiledb_1_1SparseMatrixOptions.html">SparseMatrixOptions</a> &amp;options)</td></tr>
 <tr class="separator:a5ee3846a5281cd9f8316c0cb60fa1855"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab0b5f4f04116d20e26f4d44e0260909e" id="r_ab0b5f4f04116d20e26f4d44e0260909e"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classtatami__tiledb_1_1SparseMatrix.html#ab0b5f4f04116d20e26f4d44e0260909e">SparseMatrix</a> (const std::string &amp;uri, std::string attribute)</td></tr>
@@ -368,8 +370,67 @@ class tatami_tiledb::SparseMatrix&lt; Value_, Index_ &gt;</div><p>TileDB-backed 
 <p>Numeric sparse matrix stored in a 2-dimensional TileDB array. Chunks of data are loaded from file as needed by <code><a class="elRef" href="https://tatami-inc.github.io/tatami/namespacetatami.html#af01c93a616eb99f6a17861a8b19f7ee0">tatami::Extractor</a></code> objects, with additional caching to avoid repeated reads from disk. The size of cached chunks is determined by the extent of the tiles in the TileDB array.</p>
 <p>The TileDB library is thread-safe so no additional work is required to use this class in parallel code. Nonetheless, users can force all calls to TileDB to occur in serial by defining the <code>TATAMI_TILEDB_PARALLEL_LOCK</code> macro. This should be a function-like macro that accepts a function and executes it inside a user-defined serial section. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="afbe309f2fe08bd91cc5b9188e88a73ec" name="afbe309f2fe08bd91cc5b9188e88a73ec"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#afbe309f2fe08bd91cc5b9188e88a73ec">&#9670;&#160;</a></span>SparseMatrix() <span class="overload">[1/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;typename Value_ , typename Index_ &gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classtatami__tiledb_1_1SparseMatrix.html">tatami_tiledb::SparseMatrix</a>&lt; Value_, Index_ &gt;::SparseMatrix </td>
+          <td>(</td>
+          <td class="paramtype">const std::string &amp;&#160;</td>
+          <td class="paramname"><em>uri</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::string&#160;</td>
+          <td class="paramname"><em>attribute</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">tiledb::Context&#160;</td>
+          <td class="paramname"><em>ctx</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structtatami__tiledb_1_1SparseMatrixOptions.html">SparseMatrixOptions</a> &amp;&#160;</td>
+          <td class="paramname"><em>options</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">uri</td><td>File path (or some other appropriate location) of the TileDB array. </td></tr>
+    <tr><td class="paramname">attribute</td><td>Name of the attribute containing the data of interest. </td></tr>
+    <tr><td class="paramname">context</td><td>A <b>TileDB</b> <code>Context</code> object, typically with some custom configuration. </td></tr>
+    <tr><td class="paramname">options</td><td>Further options. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
 <a id="a5ee3846a5281cd9f8316c0cb60fa1855" name="a5ee3846a5281cd9f8316c0cb60fa1855"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a5ee3846a5281cd9f8316c0cb60fa1855">&#9670;&#160;</a></span>SparseMatrix() <span class="overload">[1/2]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a5ee3846a5281cd9f8316c0cb60fa1855">&#9670;&#160;</a></span>SparseMatrix() <span class="overload">[2/3]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -421,7 +482,7 @@ template&lt;typename Value_ , typename Index_ &gt; </div>
 </div>
 </div>
 <a id="ab0b5f4f04116d20e26f4d44e0260909e" name="ab0b5f4f04116d20e26f4d44e0260909e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab0b5f4f04116d20e26f4d44e0260909e">&#9670;&#160;</a></span>SparseMatrix() <span class="overload">[2/2]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#ab0b5f4f04116d20e26f4d44e0260909e">&#9670;&#160;</a></span>SparseMatrix() <span class="overload">[3/3]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
