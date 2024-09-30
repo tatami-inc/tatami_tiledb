@@ -260,7 +260,6 @@ TEST_P(DenseUncachedTest, Basic) {
     auto len = params.use_row ? ref->ncol() : ref->nrow();
     size_t FIRST = len * 0.25, LAST = len * 0.75;
     tatami_test::test_block_access(params, mat.get(), ref.get(), FIRST, LAST);
-
     tatami_test::test_indexed_access(params, mat.get(), ref.get(), FIRST, 4);
 }
 
@@ -273,14 +272,14 @@ INSTANTIATE_TEST_SUITE_P(
 /*************************************
  *************************************/
 
-class DenseMatrixDifferentTypeTest : public ::testing::Test, public DenseMatrixTestCore {
+class DenseMatrixMiscellaneousTest : public ::testing::Test, public DenseMatrixTestCore {
 protected:
     void SetUp() {
         assemble({ 10, 10 });
     }
 };
 
-TEST_F(DenseMatrixDifferentTypeTest, Simple) {
+TEST_F(DenseMatrixMiscellaneousTest, DifferentType) {
     std::unique_ptr<tatami::Matrix<int, size_t> > mat(new tatami_tiledb::DenseMatrix<int, size_t>(fpath, name, opt));
     auto mext = mat->dense_row();
     std::shared_ptr<tatami::Matrix<int, size_t> > ref2 = tatami::make_DelayedCast<int, size_t>(ref);
@@ -290,6 +289,20 @@ TEST_F(DenseMatrixDifferentTypeTest, Simple) {
         auto mvec = tatami_test::fetch(mext.get(), r, NC);
         auto rvec2 = tatami_test::fetch(rext2.get(), r, NC);
         EXPECT_EQ(mvec, rvec2);
+    }
+}
+
+TEST_F(DenseMatrixMiscellaneousTest, ContextConstructor) {
+    tiledb::Config cfg;
+    cfg["sm.compute_concurrency_level"] = 1;
+    std::unique_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::DenseMatrix<double, int>(fpath, name, tiledb::Context(cfg), opt));
+    auto mext = mat->dense_row();
+    auto rext = ref->dense_row();
+
+    for (int r = 0; r < static_cast<int>(NR); ++r) {
+        auto mvec = tatami_test::fetch(mext.get(), r, NC);
+        auto rvec = tatami_test::fetch(rext.get(), r, NC);
+        EXPECT_EQ(mvec, rvec);
     }
 }
 

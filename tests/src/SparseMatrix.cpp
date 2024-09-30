@@ -289,14 +289,14 @@ INSTANTIATE_TEST_SUITE_P(
 /*************************************
  *************************************/
 
-class SparseMatrixCachedTypeTest : public ::testing::Test, public SparseMatrixTestCore {
+class SparseMatrixMiscellaneousTest : public ::testing::Test, public SparseMatrixTestCore {
 protected:
     void SetUp() {
         assemble({ 10, 10 });
     }
 };
 
-TEST_F(SparseMatrixCachedTypeTest, Simple) {
+TEST_F(SparseMatrixMiscellaneousTest, DifferentType) {
     std::unique_ptr<tatami::Matrix<int, size_t> > mat(new tatami_tiledb::SparseMatrix<int, size_t>(fpath, name, opt));
     auto mext = mat->dense_row();
     std::shared_ptr<tatami::Matrix<int, size_t> > ref2 = tatami::make_DelayedCast<int, size_t>(ref);
@@ -306,6 +306,20 @@ TEST_F(SparseMatrixCachedTypeTest, Simple) {
         auto mvec = tatami_test::fetch(mext.get(), r, NC);
         auto rvec2 = tatami_test::fetch(rext2.get(), r, NC);
         EXPECT_EQ(mvec, rvec2);
+    }
+}
+
+TEST_F(SparseMatrixMiscellaneousTest, ContextConstructor) {
+    tiledb::Config cfg;
+    cfg["sm.compute_concurrency_level"] = 1;
+    std::unique_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::SparseMatrix<double, int>(fpath, name, tiledb::Context(cfg), opt));
+    auto mext = mat->dense_row();
+    auto rext = ref->dense_row();
+
+    for (int r = 0; r < static_cast<int>(NR); ++r) {
+        auto mvec = tatami_test::fetch(mext.get(), r, NC);
+        auto rvec = tatami_test::fetch(rext.get(), r, NC);
+        EXPECT_EQ(mvec, rvec);
     }
 }
 
