@@ -323,9 +323,9 @@ TEST_F(SparseMatrixMiscellaneousTest, ContextConstructor) {
     }
 }
 
+#endif
 /*************************************
  *************************************/
-#else
 
 class SparseMatrixParallelTest : public ::testing::TestWithParam<std::tuple<SparseMatrixTestCore::SimulationParameters, bool, bool> >, public SparseMatrixTestCore {
 protected:
@@ -392,5 +392,3 @@ INSTANTIATE_TEST_SUITE_P(
         ::testing::Values(true, false)  // oracle usage
     )
 );
-
-#endif

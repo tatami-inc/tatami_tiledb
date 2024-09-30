@@ -306,9 +306,9 @@ TEST_F(DenseMatrixMiscellaneousTest, ContextConstructor) {
     }
 }
 
+#endif
 /*************************************
  *************************************/
-#else 
 
 class DenseMatrixParallelTest : public ::testing::TestWithParam<std::tuple<DenseMatrixTestCore::SimulationParameters, bool, bool> >, public DenseMatrixTestCore {
 protected:
@@ -375,6 +375,3 @@ INSTANTIATE_TEST_SUITE_P(
         ::testing::Values(true, false)  // oracle usage
     )
 );
-
-
-#endif
