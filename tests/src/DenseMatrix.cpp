@@ -1,8 +1,10 @@
 #include <gtest/gtest.h>
+
 #include "parallel.h" // include before tatami_tiledb.hpp
+#include "temp_file_path.h"
+
 #include "tatami_tiledb/tatami_tiledb.hpp"
 #include "tatami_test/tatami_test.hpp"
-#include "tatami_test/temp_file_path.hpp"
 
 class DenseMatrixTestCore {
 public:
@@ -25,7 +27,7 @@ public:
 
 protected:
     inline static std::shared_ptr<tatami::Matrix<double, int> > ref;
-    inline static tatami_tiledb::DenseMatrixOptions opt;
+    inline static tatami_tiledb::DenseMatrixOptions dense_opt;
     inline static std::string fpath, name;
 
     static void assemble(const SimulationParameters& params) {
@@ -34,8 +36,7 @@ protected:
         }
         last_params = params;
 
-        fpath = tatami_test::temp_file_path("tatami-dense-test");
-        tatami_test::remove_file_path(fpath);
+        fpath = temp_file_path("tatami-dense-test");
         name = "stuff";
 
         // Creating the array.
@@ -54,7 +55,13 @@ protected:
         // Open the array for writing and create the query.
         tiledb::Array array(ctx, fpath, TILEDB_WRITE);
         tiledb::Query query(ctx, array);
-        auto values = tatami_test::simulate_dense_vector<double>(NR * NC, 0, 100);
+        auto values = tatami_test::simulate_vector<double>(NR * NC, [&]{
+            tatami_test::SimulateVectorOptions opt;
+            opt.lower = 0;
+            opt.upper = 100;
+            opt.seed = 19283 + params.first * 13 + params.second * 17; 
+            return opt;
+        }());
 
         query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer(name, values);
         query.submit();
@@ -64,8 +71,8 @@ protected:
         // Don't construct a static tiledb matrix here, as the destructor doesn't get called when GoogleTest exits via _exit
         // (see https://stackoverflow.com/questions/12728535/will-global-static-variables-be-destroyed-at-program-end)
         // resulting in errors due to unjoined threads in the undestructed TileDB Context.
-        opt.maximum_cache_size = static_cast<double>(NR * NC) * 0.1 * static_cast<double>(sizeof(double));
-        opt.require_minimum_cache = true;
+        dense_opt.maximum_cache_size = static_cast<double>(NR * NC) * 0.1 * static_cast<double>(sizeof(double));
+        dense_opt.require_minimum_cache = true;
 
         ref.reset(new tatami::DenseRowMatrix<double, int>(NR, NC, std::move(values)));
 
@@ -81,7 +88,7 @@ class DenseUtilsTest : public ::testing::Test, public DenseMatrixTestCore {};
 
 TEST_F(DenseUtilsTest, Basic) {
     assemble({ 10, 10 });
-    std::shared_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::DenseMatrix<double, int>(fpath, name, opt));
+    std::shared_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::DenseMatrix<double, int>(fpath, name, dense_opt));
 
     EXPECT_EQ(mat->nrow(), NR);
     EXPECT_EQ(mat->ncol(), NC);
@@ -93,14 +100,14 @@ TEST_F(DenseUtilsTest, Basic) {
     {
         // First dimension is compromised, switching to the second dimension.
         assemble({ NR, 1 });
-        std::shared_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::DenseMatrix<double, int>(fpath, name, opt));
+        std::shared_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::DenseMatrix<double, int>(fpath, name, dense_opt));
         EXPECT_FALSE(mat->prefer_rows());
     }
 
     {
         // Second dimension is compromised, but we just use the first anyway.
         assemble({ 1, NC });
-        std::shared_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::DenseMatrix<double, int>(fpath, name, opt));
+        std::shared_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::DenseMatrix<double, int>(fpath, name, dense_opt));
         EXPECT_TRUE(mat->prefer_rows());
     }
 }
@@ -114,10 +121,8 @@ TEST_F(DenseUtilsTest, Errors) {
         tatami_tiledb::DenseMatrix<double, int>(fpath, "foo");
     }, "foo");
 
-    auto sfpath = tatami_test::temp_file_path("tatami-dense-solo-test");
+    auto sfpath = temp_file_path("tatami-dense-solo-test");
     {
-        tatami_test::remove_file_path(sfpath);
-
         // Creating a 1-dimensional array.
         tiledb::Context ctx;
         tiledb::Domain domain(ctx);
@@ -137,7 +142,7 @@ TEST_F(DenseUtilsTest, Errors) {
  *************************************/
 
 class DenseMatrixAccessFullTest :
-    public ::testing::TestWithParam<std::tuple<DenseMatrixTestCore::SimulationParameters, tatami_test::StandardTestAccessParameters> >,
+    public ::testing::TestWithParam<std::tuple<DenseMatrixTestCore::SimulationParameters, tatami_test::StandardTestAccessOptions> >,
     public DenseMatrixTestCore {
 protected:
     void SetUp() {
@@ -146,9 +151,9 @@ protected:
 };
 
 TEST_P(DenseMatrixAccessFullTest, Basic) {
-    auto params = tatami_test::convert_access_parameters(std::get<1>(GetParam()));
-    std::shared_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::DenseMatrix<double, int>(fpath, name, opt));
-    tatami_test::test_full_access(params, mat.get(), ref.get());
+    std::shared_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::DenseMatrix<double, int>(fpath, name, dense_opt));
+    auto opts = tatami_test::convert_test_access_options(std::get<1>(GetParam()));
+    tatami_test::test_full_access(*mat, *ref, opts);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -156,7 +161,7 @@ INSTANTIATE_TEST_SUITE_P(
     DenseMatrixAccessFullTest,
     ::testing::Combine(
         DenseMatrixTestCore::create_combinations(), 
-        tatami_test::standard_test_access_parameter_combinations()
+        tatami_test::standard_test_access_options_combinations()
     )
 );
 
@@ -164,7 +169,7 @@ INSTANTIATE_TEST_SUITE_P(
  *************************************/
 
 class DenseSlicedTest : 
-    public ::testing::TestWithParam<std::tuple<DenseMatrixTestCore::SimulationParameters, tatami_test::StandardTestAccessParameters, std::pair<double, double> > >,
+    public ::testing::TestWithParam<std::tuple<DenseMatrixTestCore::SimulationParameters, tatami_test::StandardTestAccessOptions, std::pair<double, double> > >,
     public DenseMatrixTestCore {
 protected:
     void SetUp() {
@@ -173,15 +178,11 @@ protected:
 };
 
 TEST_P(DenseSlicedTest, Basic) {
-    std::shared_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::DenseMatrix<double, int>(fpath, name, opt));
-
+    std::shared_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::DenseMatrix<double, int>(fpath, name, dense_opt));
     auto tparam = GetParam();
-    auto params = tatami_test::convert_access_parameters(std::get<1>(tparam));
+    auto opts = tatami_test::convert_test_access_options(std::get<1>(tparam));
     auto block = std::get<2>(tparam);
-    auto len = params.use_row ? ref->ncol() : ref->nrow();
-    size_t FIRST = block.first * len, LAST = block.second * len;
-
-    tatami_test::test_block_access(params, mat.get(), ref.get(), FIRST, LAST);
+    tatami_test::test_block_access(*mat, *ref, block.first, block.second, opts);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -189,11 +190,11 @@ INSTANTIATE_TEST_SUITE_P(
     DenseSlicedTest,
     ::testing::Combine(
         DenseMatrixTestCore::create_combinations(), 
-        tatami_test::standard_test_access_parameter_combinations(),
+        tatami_test::standard_test_access_options_combinations(),
         ::testing::Values(
             std::make_pair(0.0, 0.5), 
-            std::make_pair(0.25, 0.75), 
-            std::make_pair(0.51, 1.0)
+            std::make_pair(0.25, 0.6), 
+            std::make_pair(0.51, 0.4)
         )
     )
 );
@@ -202,7 +203,7 @@ INSTANTIATE_TEST_SUITE_P(
  *************************************/
 
 class DenseIndexedTest : 
-    public ::testing::TestWithParam<std::tuple<DenseMatrixTestCore::SimulationParameters, tatami_test::StandardTestAccessParameters, std::pair<double, int> > >,
+    public ::testing::TestWithParam<std::tuple<DenseMatrixTestCore::SimulationParameters, tatami_test::StandardTestAccessOptions, std::pair<double, double> > >,
     public DenseMatrixTestCore {
 protected:
     void SetUp() {
@@ -211,15 +212,11 @@ protected:
 };
 
 TEST_P(DenseIndexedTest, Basic) {
-    std::shared_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::DenseMatrix<double, int>(fpath, name, opt));
-
+    std::shared_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::DenseMatrix<double, int>(fpath, name, dense_opt));
     auto tparam = GetParam();
-    auto params = tatami_test::convert_access_parameters(std::get<1>(tparam));
+    auto opts = tatami_test::convert_test_access_options(std::get<1>(tparam));
     auto index = std::get<2>(tparam);
-    auto len = params.use_row ? ref->ncol() : ref->nrow();
-    size_t FIRST = index.first * len, STEP = index.second;
-
-    tatami_test::test_indexed_access(params, mat.get(), ref.get(), FIRST, STEP);
+    tatami_test::test_indexed_access(*mat, *ref, index.first, index.second, opts);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -227,11 +224,11 @@ INSTANTIATE_TEST_SUITE_P(
     DenseIndexedTest,
     ::testing::Combine(
         DenseMatrixTestCore::create_combinations(), 
-        tatami_test::standard_test_access_parameter_combinations(),
+        tatami_test::standard_test_access_options_combinations(),
         ::testing::Values(
-            std::make_pair(0.3, 5), 
-            std::make_pair(0.11, 9),
-            std::make_pair(0.4, 7)
+            std::make_pair(0.3, 0.3), 
+            std::make_pair(0.11, 0.1),
+            std::make_pair(0.4, 0.2)
         )
     )
 );
@@ -240,7 +237,7 @@ INSTANTIATE_TEST_SUITE_P(
  *************************************/
 
 class DenseUncachedTest : 
-    public ::testing::TestWithParam<tatami_test::StandardTestAccessParameters>,
+    public ::testing::TestWithParam<tatami_test::StandardTestAccessOptions>,
     public DenseMatrixTestCore {
 protected:
     void SetUp() {
@@ -249,24 +246,21 @@ protected:
 };
 
 TEST_P(DenseUncachedTest, Basic) {
-    tatami_tiledb::DenseMatrixOptions opt2;
-    opt2.maximum_cache_size = 0;
-    opt2.require_minimum_cache = false;
-    std::shared_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::DenseMatrix<double, int>(fpath, name, opt2));
+    tatami_tiledb::DenseMatrixOptions dense_opt2;
+    dense_opt2.maximum_cache_size = 0;
+    dense_opt2.require_minimum_cache = false;
+    std::shared_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::DenseMatrix<double, int>(fpath, name, dense_opt2));
 
-    auto params = tatami_test::convert_access_parameters(GetParam());
-    tatami_test::test_full_access(params, mat.get(), ref.get());
-
-    auto len = params.use_row ? ref->ncol() : ref->nrow();
-    size_t FIRST = len * 0.25, LAST = len * 0.75;
-    tatami_test::test_block_access(params, mat.get(), ref.get(), FIRST, LAST);
-    tatami_test::test_indexed_access(params, mat.get(), ref.get(), FIRST, 4);
+    auto opts = tatami_test::convert_test_access_options(GetParam());
+    tatami_test::test_full_access(*mat, *ref, opts);
+    tatami_test::test_block_access(*mat, *ref, 0.25, 0.5, opts);
+    tatami_test::test_indexed_access(*mat, *ref, 0.1, 0.2, opts);
 }
 
 INSTANTIATE_TEST_SUITE_P(
     DenseMatrix,
     DenseUncachedTest,
-    tatami_test::standard_test_access_parameter_combinations()
+    tatami_test::standard_test_access_options_combinations()
 );
 
 /*************************************
@@ -280,14 +274,14 @@ protected:
 };
 
 TEST_F(DenseMatrixMiscellaneousTest, DifferentType) {
-    std::unique_ptr<tatami::Matrix<int, size_t> > mat(new tatami_tiledb::DenseMatrix<int, size_t>(fpath, name, opt));
+    std::unique_ptr<tatami::Matrix<int, size_t> > mat(new tatami_tiledb::DenseMatrix<int, size_t>(fpath, name, dense_opt));
     auto mext = mat->dense_row();
     std::shared_ptr<tatami::Matrix<int, size_t> > ref2 = tatami::make_DelayedCast<int, size_t>(ref);
     auto rext2 = ref2->dense_row();
 
     for (size_t r = 0; r < NR; ++r) {
-        auto mvec = tatami_test::fetch(mext.get(), r, NC);
-        auto rvec2 = tatami_test::fetch(rext2.get(), r, NC);
+        auto mvec = tatami_test::fetch<int, size_t>(*mext, r, NC);
+        auto rvec2 = tatami_test::fetch<int, size_t>(*rext2, r, NC);
         EXPECT_EQ(mvec, rvec2);
     }
 }
@@ -295,13 +289,13 @@ TEST_F(DenseMatrixMiscellaneousTest, DifferentType) {
 TEST_F(DenseMatrixMiscellaneousTest, ContextConstructor) {
     tiledb::Config cfg;
     cfg["sm.compute_concurrency_level"] = 1;
-    std::unique_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::DenseMatrix<double, int>(fpath, name, tiledb::Context(cfg), opt));
+    std::unique_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::DenseMatrix<double, int>(fpath, name, tiledb::Context(cfg), dense_opt));
     auto mext = mat->dense_row();
     auto rext = ref->dense_row();
 
     for (int r = 0; r < static_cast<int>(NR); ++r) {
-        auto mvec = tatami_test::fetch(mext.get(), r, NC);
-        auto rvec = tatami_test::fetch(rext.get(), r, NC);
+        auto mvec = tatami_test::fetch<double, int>(*mext, r, NC);
+        auto rvec = tatami_test::fetch<double, int>(*rext, r, NC);
         EXPECT_EQ(mvec, rvec);
     }
 }
@@ -310,7 +304,9 @@ TEST_F(DenseMatrixMiscellaneousTest, ContextConstructor) {
 /*************************************
  *************************************/
 
-class DenseMatrixParallelTest : public ::testing::TestWithParam<std::tuple<DenseMatrixTestCore::SimulationParameters, bool, bool> >, public DenseMatrixTestCore {
+class DenseMatrixParallelTest : 
+    public ::testing::TestWithParam<std::tuple<DenseMatrixTestCore::SimulationParameters, bool, bool> >,
+    public DenseMatrixTestCore {
 protected:
     void SetUp() {
         assemble(std::get<0>(GetParam()));
@@ -353,7 +349,7 @@ protected:
 };
 
 TEST_P(DenseMatrixParallelTest, Simple) {
-    std::shared_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::DenseMatrix<double, int>(fpath, name, opt));
+    std::shared_ptr<tatami::Matrix<double, int> > mat(new tatami_tiledb::DenseMatrix<double, int>(fpath, name, dense_opt));
 
     auto param = GetParam();
     bool row = std::get<1>(param);

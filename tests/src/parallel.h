@@ -15,6 +15,6 @@ void lockerup(Function_ fun) {
     fun();
 }
 
-#define TATAMI_TILEDB_PARALLEL_LOCK(f) ::lockerup(std::move(f))
+//#define TATAMI_TILEDB_PARALLEL_LOCK(f) ::lockerup(std::move(f))
 #endif
 #endif

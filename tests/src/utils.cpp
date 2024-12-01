@@ -1,7 +1,8 @@
 #include <gtest/gtest.h>
 #include "tatami_tiledb/tatami_tiledb.hpp"
-#include "tatami_test/temp_file_path.hpp"
 #include "tatami_test/tatami_test.hpp"
+
+#include "temp_file_path.h"
 
 #include <cstdint>
 #include <vector>
@@ -18,7 +19,7 @@ protected:
     inline static std::string fpath;
 
     static void SetUpTestSuite() {
-        fpath = tatami_test::temp_file_path("tatami-dim-test");
+        fpath = temp_file_path("tatami-dim-test");
     }
 
     tiledb::Array create_array(const tiledb::Dimension& dim) {
@@ -492,7 +493,7 @@ protected:
     inline static std::string fpath;
 
     static void SetUpTestSuite() {
-        fpath = tatami_test::temp_file_path("tatami-vec-test");
+        fpath = temp_file_path("tatami-vec-test");
     }
 
     template<typename Type_>
