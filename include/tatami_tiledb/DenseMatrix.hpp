@@ -157,18 +157,30 @@ private:
 public:
     template<typename Value_>
     const Value_* fetch_block(Index_ i, Index_ block_start, Value_* buffer) {
-        return fetch_raw(i, buffer, [&](tiledb::Subarray& subarray, int rowdex) {
-            my_tdb_non_target_dim.add_range(subarray, rowdex, block_start, my_non_target_length);
-        });
+        return fetch_raw(
+            i,
+            buffer,
+            [&](tiledb::Subarray& subarray, int rowdex) -> void {
+                my_tdb_non_target_dim.add_range(subarray, rowdex, block_start, my_non_target_length);
+            }
+        );
     }
 
     template<typename Value_>
     const Value_* fetch_indices(Index_ i, const std::vector<Index_>& indices, Value_* buffer) {
-        return fetch_raw(i, buffer, [&](tiledb::Subarray& subarray, int rowdex) {
-            tatami::process_consecutive_indices<Index_>(indices.data(), indices.size(), [&](Index_ s, Index_ l) {
-                my_tdb_non_target_dim.add_range(subarray, rowdex, s, l);
-            });
-        });
+        return fetch_raw(
+            i,
+            buffer,
+            [&](tiledb::Subarray& subarray, int rowdex) -> void {
+                tatami::process_consecutive_indices<Index_>(
+                    indices.data(),
+                    indices.size(),
+                    [&](Index_ s, Index_ l) -> void {
+                        my_tdb_non_target_dim.add_range(subarray, rowdex, s, l);
+                    }
+                );
+            }
+        );
     }
 };
 
@@ -242,7 +254,7 @@ private:
                 my_offset += my_slab_size;
                 return output;
             },
-            /* populate = */ [&](std::vector<std::pair<Index_, Slab*> >& to_populate, std::vector<std::pair<Index_, Slab*> >& to_reuse) {
+            /* populate = */ [&](std::vector<std::pair<Index_, Slab*> >& to_populate, std::vector<std::pair<Index_, Slab*> >& to_reuse) -> void {
                 // Defragmenting the existing chunks. We sort by offset to make 
                 // sure that we're not clobbering in-use slabs during the copy().
                 sort_by_field(to_reuse, [](const std::pair<Index_, Slab*>& x) -> size_t { return x.second->offset; });
@@ -314,18 +326,30 @@ private:
 public:
     template<typename Value_>
     const Value_* fetch_block(Index_ i, Index_ block_start, Value_* buffer) {
-        return fetch_raw(i, buffer, [&](tiledb::Subarray& subarray, int rowdex) {
-            my_tdb_non_target_dim.add_range(subarray, rowdex, block_start, my_non_target_length);
-        });
+        return fetch_raw(
+            i,
+            buffer,
+            [&](tiledb::Subarray& subarray, int rowdex) -> void {
+                my_tdb_non_target_dim.add_range(subarray, rowdex, block_start, my_non_target_length);
+            }
+        );
     }
 
     template<typename Value_>
     const Value_* fetch_indices(Index_ i, const std::vector<Index_>& indices, Value_* buffer) {
-        return fetch_raw(i, buffer, [&](tiledb::Subarray& subarray, int rowdex) {
-            tatami::process_consecutive_indices<Index_>(indices.data(), indices.size(), [&](Index_ s, Index_ l) {
-                my_tdb_non_target_dim.add_range(subarray, rowdex, s, l);
-            });
-        });
+        return fetch_raw(
+            i,
+            buffer, 
+            [&](tiledb::Subarray& subarray, int rowdex) -> void {
+                tatami::process_consecutive_indices<Index_>(
+                    indices.data(),
+                    indices.size(),
+                    [&](Index_ s, Index_ l) -> void {
+                        my_tdb_non_target_dim.add_range(subarray, rowdex, s, l);
+                    }
+                );
+            }
+        );
     }
 };
 
@@ -499,7 +523,7 @@ public:
 private:
     template<class PossibleContext_>
     void initialize(const std::string& uri, PossibleContext_ ctx, const DenseMatrixOptions& options) {
-        serialize([&]() {
+        serialize([&]() -> void {
             my_tdb_comp.reset(
                 [&]{
                     // If we have to create our own Context_ object, we do so inside the serialized
@@ -510,9 +534,9 @@ private:
                         return new DenseMatrix_internal::Components(uri);
                     }
                 }(),
-                [](DenseMatrix_internal::Components* ptr) {
+                [](DenseMatrix_internal::Components* ptr) -> void {
                     // Serializing the deleter, for completeness's sake.
-                    serialize([&]() {
+                    serialize([&]() -> void {
                         delete ptr;
                     });
                 }

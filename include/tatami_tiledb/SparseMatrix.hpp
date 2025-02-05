@@ -191,7 +191,7 @@ private:
                 Index_ chunk_length = std::min(my_target_dim_extent - chunk_start, my_target_chunk_length);
 
                 size_t num_nonzero = 0;
-                serialize([&]() {
+                serialize([&]() -> void {
                     tiledb::Subarray subarray(my_tdb_comp.ctx, my_tdb_comp.array);
                     int rowdex = my_row;
                     my_tdb_target_dim.add_range(subarray, 1 - rowdex, chunk_start, chunk_length);
@@ -234,17 +234,27 @@ private:
 
 public:
     std::pair<size_t, size_t> fetch_block(Index_ i, Index_ block_start, Index_ block_length) {
-        return fetch_raw(i, [&](tiledb::Subarray& subarray, int rowdex) {
-            my_tdb_non_target_dim.add_range(subarray, rowdex, block_start, block_length);
-        });
+        return fetch_raw(
+            i,
+            [&](tiledb::Subarray& subarray, int rowdex) -> void {
+                my_tdb_non_target_dim.add_range(subarray, rowdex, block_start, block_length);
+            }
+        );
     }
 
     std::pair<size_t, size_t> fetch_indices(Index_ i, const std::vector<Index_>& indices) {
-        return fetch_raw(i, [&](tiledb::Subarray& subarray, int rowdex) {
-            tatami::process_consecutive_indices<Index_>(indices.data(), indices.size(), [&](Index_ s, Index_ l) {
-                my_tdb_non_target_dim.add_range(subarray, rowdex, s, l);
-            });
-        });
+        return fetch_raw(
+            i,
+            [&](tiledb::Subarray& subarray, int rowdex) -> void {
+                tatami::process_consecutive_indices<Index_>(
+                    indices.data(),
+                    indices.size(),
+                    [&](Index_ s, Index_ l) -> void {
+                        my_tdb_non_target_dim.add_range(subarray, rowdex, s, l);
+                    }
+                );
+            }
+        );
     }
 
 public:
@@ -370,7 +380,7 @@ private:
             /* create = */ [&]() -> Slab {
                 return Slab();
             },
-            /* populate = */ [&](std::vector<std::pair<Index_, size_t> >& to_populate, std::vector<std::pair<Index_, size_t> >& to_reuse, std::vector<Slab>& all_slabs) {
+            /* populate = */ [&](std::vector<std::pair<Index_, size_t> >& to_populate, std::vector<std::pair<Index_, size_t> >& to_reuse, std::vector<Slab>& all_slabs) -> void {
                 // Defragmenting the existing chunks. We sort by offset to make 
                 // sure that we're not clobbering in-use slabs during the copy().
                 sort_by_field(to_reuse, [&](const std::pair<Index_, size_t>& x) -> size_t { return all_slabs[x.second].offset; });
@@ -475,17 +485,27 @@ private:
 
 public:
     std::pair<size_t, size_t> fetch_block(Index_ i, Index_ block_start, Index_ block_length) {
-        return fetch_raw(i, [&](tiledb::Subarray& subarray, int rowdex) {
-            my_tdb_non_target_dim.add_range(subarray, rowdex, block_start, block_length);
-        });
+        return fetch_raw(
+            i,
+            [&](tiledb::Subarray& subarray, int rowdex) -> void {
+                my_tdb_non_target_dim.add_range(subarray, rowdex, block_start, block_length);
+            }
+        );
     }
 
     std::pair<size_t, size_t> fetch_indices(Index_ i, const std::vector<Index_>& indices) {
-        return fetch_raw(i, [&](tiledb::Subarray& subarray, int rowdex) {
-            tatami::process_consecutive_indices<Index_>(indices.data(), indices.size(), [&](Index_ s, Index_ l) {
-                my_tdb_non_target_dim.add_range(subarray, rowdex, s, l);
-            });
-        });
+        return fetch_raw(
+            i,
+            [&](tiledb::Subarray& subarray, int rowdex) -> void {
+                tatami::process_consecutive_indices<Index_>(
+                    indices.data(),
+                    indices.size(),
+                    [&](Index_ s, Index_ l) -> void {
+                        my_tdb_non_target_dim.add_range(subarray, rowdex, s, l);
+                    }
+                );
+            }
+        );
     }
 
 public:
@@ -929,7 +949,7 @@ public:
 private:
     template<class PossibleContext_>
     void initialize(const std::string& uri, PossibleContext_ ctx, const SparseMatrixOptions& options) {
-        serialize([&]() {
+        serialize([&]() -> void {
             my_tdb_comp.reset(
                 [&]{
                     // If we have to create our own Context_ object, we do so inside the serialized
@@ -942,7 +962,7 @@ private:
                 }(),
                 [](SparseMatrix_internal::Components* ptr) {
                     // Serializing the deleter, for completeness's sake.
-                    serialize([&]() {
+                    serialize([&]() -> void {
                         delete ptr;
                     });
                 }
