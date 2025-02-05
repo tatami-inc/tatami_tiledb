@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
-<tagfile doxygen_version="1.9.8">
+<tagfile doxygen_version="1.12.0">
   <compound kind="file">
     <name>DenseMatrix.hpp</name>
     <path>tatami_tiledb/</path>
@@ -33,7 +33,7 @@
     <filename>classtatami__tiledb_1_1DenseMatrix.html</filename>
     <templarg>typename Value_</templarg>
     <templarg>typename Index_</templarg>
-    <base>Matrix&lt; Value_, Index_ &gt;</base>
+    <base>tatami::Matrix&lt; Value_, Index_ &gt;</base>
     <member kind="function">
       <type></type>
       <name>DenseMatrix</name>
@@ -79,7 +79,7 @@
     <filename>classtatami__tiledb_1_1SparseMatrix.html</filename>
     <templarg>typename Value_</templarg>
     <templarg>typename Index_</templarg>
-    <base>Matrix&lt; Value_, Index_ &gt;</base>
+    <base>tatami::Matrix&lt; Value_, Index_ &gt;</base>
     <member kind="function">
       <type></type>
       <name>SparseMatrix</name>
