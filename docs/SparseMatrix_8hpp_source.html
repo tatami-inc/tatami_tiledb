@@ -631,7 +631,7 @@ $(function(){ initResizable(false); });
 <div class="line"><a id="l00561" name="l00561"></a><span class="lineno">  561</span>}</div>
 <div class="line"><a id="l00562" name="l00562"></a><span class="lineno">  562</span> </div>
 <div class="line"><a id="l00563" name="l00563"></a><span class="lineno">  563</span><span class="keyword">template</span>&lt;<span class="keywordtype">bool</span> oracle_, <span class="keyword">typename</span> Value_, <span class="keyword">typename</span> Index_&gt;</div>
-<div class="line"><a id="l00564" name="l00564"></a><span class="lineno">  564</span><span class="keyword">class </span>SparseFull : <span class="keyword">public</span> <a class="code hl_typedefRef" href="https://tatami-inc.github.io/tatami/namespacetatami.html#a213ab58ba31e5b5cee3b66ab54d86055">tatami::SparseExtractor</a>&lt;oracle_, Value_, Index_&gt; {</div>
+<div class="line"><a id="l00564" name="l00564"></a><span class="lineno">  564</span><span class="keyword">class </span>SparseFull final : <span class="keyword">public</span> <a class="code hl_typedefRef" href="https://tatami-inc.github.io/tatami/namespacetatami.html#a213ab58ba31e5b5cee3b66ab54d86055">tatami::SparseExtractor</a>&lt;oracle_, Value_, Index_&gt; {</div>
 <div class="line"><a id="l00565" name="l00565"></a><span class="lineno">  565</span><span class="keyword">public</span>:</div>
 <div class="line"><a id="l00566" name="l00566"></a><span class="lineno">  566</span>    SparseFull(</div>
 <div class="line"><a id="l00567" name="l00567"></a><span class="lineno">  567</span>        <span class="keyword">const</span> Components&amp; tdb_comp,</div>
@@ -678,7 +678,7 @@ $(function(){ initResizable(false); });
 <div class="line"><a id="l00608" name="l00608"></a><span class="lineno">  608</span>};</div>
 <div class="line"><a id="l00609" name="l00609"></a><span class="lineno">  609</span> </div>
 <div class="line"><a id="l00610" name="l00610"></a><span class="lineno">  610</span><span class="keyword">template</span>&lt;<span class="keywordtype">bool</span> oracle_, <span class="keyword">typename</span> Value_, <span class="keyword">typename</span> Index_&gt;</div>
-<div class="line"><a id="l00611" name="l00611"></a><span class="lineno">  611</span><span class="keyword">class </span>SparseBlock : <span class="keyword">public</span> <a class="code hl_typedefRef" href="https://tatami-inc.github.io/tatami/namespacetatami.html#a213ab58ba31e5b5cee3b66ab54d86055">tatami::SparseExtractor</a>&lt;oracle_, Value_, Index_&gt; {</div>
+<div class="line"><a id="l00611" name="l00611"></a><span class="lineno">  611</span><span class="keyword">class </span>SparseBlock final : <span class="keyword">public</span> <a class="code hl_typedefRef" href="https://tatami-inc.github.io/tatami/namespacetatami.html#a213ab58ba31e5b5cee3b66ab54d86055">tatami::SparseExtractor</a>&lt;oracle_, Value_, Index_&gt; {</div>
 <div class="line"><a id="l00612" name="l00612"></a><span class="lineno">  612</span><span class="keyword">public</span>:</div>
 <div class="line"><a id="l00613" name="l00613"></a><span class="lineno">  613</span>    SparseBlock(</div>
 <div class="line"><a id="l00614" name="l00614"></a><span class="lineno">  614</span>        <span class="keyword">const</span> Components&amp; tdb_comp,</div>
@@ -727,7 +727,7 @@ $(function(){ initResizable(false); });
 <div class="line"><a id="l00657" name="l00657"></a><span class="lineno">  657</span>};</div>
 <div class="line"><a id="l00658" name="l00658"></a><span class="lineno">  658</span> </div>
 <div class="line"><a id="l00659" name="l00659"></a><span class="lineno">  659</span><span class="keyword">template</span>&lt;<span class="keywordtype">bool</span> oracle_, <span class="keyword">typename</span> Value_, <span class="keyword">typename</span> Index_&gt;</div>
-<div class="line"><a id="l00660" name="l00660"></a><span class="lineno">  660</span><span class="keyword">class </span>SparseIndex : <span class="keyword">public</span> <a class="code hl_typedefRef" href="https://tatami-inc.github.io/tatami/namespacetatami.html#a213ab58ba31e5b5cee3b66ab54d86055">tatami::SparseExtractor</a>&lt;oracle_, Value_, Index_&gt; {</div>
+<div class="line"><a id="l00660" name="l00660"></a><span class="lineno">  660</span><span class="keyword">class </span>SparseIndex final : <span class="keyword">public</span> <a class="code hl_typedefRef" href="https://tatami-inc.github.io/tatami/namespacetatami.html#a213ab58ba31e5b5cee3b66ab54d86055">tatami::SparseExtractor</a>&lt;oracle_, Value_, Index_&gt; {</div>
 <div class="line"><a id="l00661" name="l00661"></a><span class="lineno">  661</span><span class="keyword">public</span>:</div>
 <div class="line"><a id="l00662" name="l00662"></a><span class="lineno">  662</span>    SparseIndex(</div>
 <div class="line"><a id="l00663" name="l00663"></a><span class="lineno">  663</span>        <span class="keyword">const</span> Components&amp; tdb_comp,</div>
@@ -778,7 +778,7 @@ $(function(){ initResizable(false); });
 <div class="line"><a id="l00708" name="l00708"></a><span class="lineno">  708</span><span class="comment"> ************************/</span></div>
 <div class="line"><a id="l00709" name="l00709"></a><span class="lineno">  709</span> </div>
 <div class="line"><a id="l00710" name="l00710"></a><span class="lineno">  710</span><span class="keyword">template</span>&lt;<span class="keywordtype">bool</span> oracle_, <span class="keyword">typename</span> Value_, <span class="keyword">typename</span> Index_&gt;</div>
-<div class="line"><a id="l00711" name="l00711"></a><span class="lineno">  711</span><span class="keyword">class </span>DenseFull : <span class="keyword">public</span> <a class="code hl_typedefRef" href="https://tatami-inc.github.io/tatami/namespacetatami.html#a92f2deb44e0a3cb1c569a379c6facbf0">tatami::DenseExtractor</a>&lt;oracle_, Value_, Index_&gt; {</div>
+<div class="line"><a id="l00711" name="l00711"></a><span class="lineno">  711</span><span class="keyword">class </span>DenseFull final : <span class="keyword">public</span> <a class="code hl_typedefRef" href="https://tatami-inc.github.io/tatami/namespacetatami.html#a92f2deb44e0a3cb1c569a379c6facbf0">tatami::DenseExtractor</a>&lt;oracle_, Value_, Index_&gt; {</div>
 <div class="line"><a id="l00712" name="l00712"></a><span class="lineno">  712</span><span class="keyword">public</span>:</div>
 <div class="line"><a id="l00713" name="l00713"></a><span class="lineno">  713</span>    DenseFull(</div>
 <div class="line"><a id="l00714" name="l00714"></a><span class="lineno">  714</span>        <span class="keyword">const</span> Components&amp; tdb_comp,</div>
@@ -836,7 +836,7 @@ $(function(){ initResizable(false); });
 <div class="line"><a id="l00766" name="l00766"></a><span class="lineno">  766</span>};</div>
 <div class="line"><a id="l00767" name="l00767"></a><span class="lineno">  767</span> </div>
 <div class="line"><a id="l00768" name="l00768"></a><span class="lineno">  768</span><span class="keyword">template</span>&lt;<span class="keywordtype">bool</span> oracle_, <span class="keyword">typename</span> Value_, <span class="keyword">typename</span> Index_&gt; </div>
-<div class="line"><a id="l00769" name="l00769"></a><span class="lineno">  769</span><span class="keyword">class </span>DenseBlock : <span class="keyword">public</span> <a class="code hl_typedefRef" href="https://tatami-inc.github.io/tatami/namespacetatami.html#a92f2deb44e0a3cb1c569a379c6facbf0">tatami::DenseExtractor</a>&lt;oracle_, Value_, Index_&gt; {</div>
+<div class="line"><a id="l00769" name="l00769"></a><span class="lineno">  769</span><span class="keyword">class </span>DenseBlock final : <span class="keyword">public</span> <a class="code hl_typedefRef" href="https://tatami-inc.github.io/tatami/namespacetatami.html#a92f2deb44e0a3cb1c569a379c6facbf0">tatami::DenseExtractor</a>&lt;oracle_, Value_, Index_&gt; {</div>
 <div class="line"><a id="l00770" name="l00770"></a><span class="lineno">  770</span><span class="keyword">public</span>:</div>
 <div class="line"><a id="l00771" name="l00771"></a><span class="lineno">  771</span>    DenseBlock(</div>
 <div class="line"><a id="l00772" name="l00772"></a><span class="lineno">  772</span>        <span class="keyword">const</span> Components&amp; tdb_comp,</div>
@@ -896,7 +896,7 @@ $(function(){ initResizable(false); });
 <div class="line"><a id="l00826" name="l00826"></a><span class="lineno">  826</span>};</div>
 <div class="line"><a id="l00827" name="l00827"></a><span class="lineno">  827</span> </div>
 <div class="line"><a id="l00828" name="l00828"></a><span class="lineno">  828</span><span class="keyword">template</span>&lt;<span class="keywordtype">bool</span> oracle_, <span class="keyword">typename</span> Value_, <span class="keyword">typename</span> Index_&gt;</div>
-<div class="line"><a id="l00829" name="l00829"></a><span class="lineno">  829</span><span class="keyword">class </span>DenseIndex : <span class="keyword">public</span> <a class="code hl_typedefRef" href="https://tatami-inc.github.io/tatami/namespacetatami.html#a92f2deb44e0a3cb1c569a379c6facbf0">tatami::DenseExtractor</a>&lt;oracle_, Value_, Index_&gt; {</div>
+<div class="line"><a id="l00829" name="l00829"></a><span class="lineno">  829</span><span class="keyword">class </span>DenseIndex final : <span class="keyword">public</span> <a class="code hl_typedefRef" href="https://tatami-inc.github.io/tatami/namespacetatami.html#a92f2deb44e0a3cb1c569a379c6facbf0">tatami::DenseExtractor</a>&lt;oracle_, Value_, Index_&gt; {</div>
 <div class="line"><a id="l00830" name="l00830"></a><span class="lineno">  830</span><span class="keyword">public</span>:</div>
 <div class="line"><a id="l00831" name="l00831"></a><span class="lineno">  831</span>    DenseIndex(</div>
 <div class="line"><a id="l00832" name="l00832"></a><span class="lineno">  832</span>        <span class="keyword">const</span> Components&amp; tdb_comp,</div>
@@ -972,7 +972,7 @@ $(function(){ initResizable(false); });
 <div class="line"><a id="l00902" name="l00902"></a><span class="lineno">  902</span>}</div>
 <div class="line"><a id="l00921" name="l00921"></a><span class="lineno">  921</span><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Value_, <span class="keyword">typename</span> Index_&gt;</div>
 <div class="foldopen" id="foldopen00922" data-start="{" data-end="};">
-<div class="line"><a id="l00922" name="l00922"></a><span class="lineno"><a class="line" href="classtatami__tiledb_1_1SparseMatrix.html">  922</a></span><span class="keyword">class </span><a class="code hl_class" href="classtatami__tiledb_1_1SparseMatrix.html">SparseMatrix</a> : <span class="keyword">public</span> <a class="code hl_classRef" href="https://tatami-inc.github.io/tatami/classtatami_1_1Matrix.html">tatami::Matrix</a>&lt;Value_, Index_&gt; {</div>
+<div class="line"><a id="l00922" name="l00922"></a><span class="lineno"><a class="line" href="classtatami__tiledb_1_1SparseMatrix.html">  922</a></span><span class="keyword">class </span><a class="code hl_class" href="classtatami__tiledb_1_1SparseMatrix.html">SparseMatrix</a> final : <span class="keyword">public</span> <a class="code hl_classRef" href="https://tatami-inc.github.io/tatami/classtatami_1_1Matrix.html">tatami::Matrix</a>&lt;Value_, Index_&gt; {</div>
 <div class="line"><a id="l00923" name="l00923"></a><span class="lineno">  923</span><span class="keyword">public</span>:</div>
 <div class="foldopen" id="foldopen00930" data-start="{" data-end="}">
 <div class="line"><a id="l00930" name="l00930"></a><span class="lineno"><a class="line" href="classtatami__tiledb_1_1SparseMatrix.html#afbe309f2fe08bd91cc5b9188e88a73ec">  930</a></span>    <a class="code hl_function" href="classtatami__tiledb_1_1SparseMatrix.html#afbe309f2fe08bd91cc5b9188e88a73ec">SparseMatrix</a>(<span class="keyword">const</span> std::string&amp; uri, std::string attribute, tiledb::Context ctx, <span class="keyword">const</span> <a class="code hl_struct" href="structtatami__tiledb_1_1SparseMatrixOptions.html">SparseMatrixOptions</a>&amp; options) : my_attribute(std::move(attribute)) {</div>
