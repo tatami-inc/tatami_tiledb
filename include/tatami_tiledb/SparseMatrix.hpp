@@ -561,7 +561,7 @@ tatami::SparseRange<Value_, Index_> fill_sparse_range(
 }
 
 template<bool oracle_, typename Value_, typename Index_>
-class SparseFull : public tatami::SparseExtractor<oracle_, Value_, Index_> {
+class SparseFull final : public tatami::SparseExtractor<oracle_, Value_, Index_> {
 public:
     SparseFull(
         const Components& tdb_comp,
@@ -608,7 +608,7 @@ private:
 };
 
 template<bool oracle_, typename Value_, typename Index_>
-class SparseBlock : public tatami::SparseExtractor<oracle_, Value_, Index_> {
+class SparseBlock final : public tatami::SparseExtractor<oracle_, Value_, Index_> {
 public:
     SparseBlock(
         const Components& tdb_comp,
@@ -657,7 +657,7 @@ private:
 };
 
 template<bool oracle_, typename Value_, typename Index_>
-class SparseIndex : public tatami::SparseExtractor<oracle_, Value_, Index_> {
+class SparseIndex final : public tatami::SparseExtractor<oracle_, Value_, Index_> {
 public:
     SparseIndex(
         const Components& tdb_comp,
@@ -708,7 +708,7 @@ private:
  ************************/
 
 template<bool oracle_, typename Value_, typename Index_>
-class DenseFull : public tatami::DenseExtractor<oracle_, Value_, Index_> {
+class DenseFull final : public tatami::DenseExtractor<oracle_, Value_, Index_> {
 public:
     DenseFull(
         const Components& tdb_comp,
@@ -766,7 +766,7 @@ private:
 };
 
 template<bool oracle_, typename Value_, typename Index_> 
-class DenseBlock : public tatami::DenseExtractor<oracle_, Value_, Index_> {
+class DenseBlock final : public tatami::DenseExtractor<oracle_, Value_, Index_> {
 public:
     DenseBlock(
         const Components& tdb_comp,
@@ -826,7 +826,7 @@ private:
 };
 
 template<bool oracle_, typename Value_, typename Index_>
-class DenseIndex : public tatami::DenseExtractor<oracle_, Value_, Index_> {
+class DenseIndex final : public tatami::DenseExtractor<oracle_, Value_, Index_> {
 public:
     DenseIndex(
         const Components& tdb_comp,
@@ -919,7 +919,7 @@ private:
  * This should be a function-like macro that accepts a function and executes it inside a user-defined serial section.
  */
 template<typename Value_, typename Index_>
-class SparseMatrix : public tatami::Matrix<Value_, Index_> {
+class SparseMatrix final : public tatami::Matrix<Value_, Index_> {
 public:
     /**
      * @param uri File path (or some other appropriate location) of the TileDB array.

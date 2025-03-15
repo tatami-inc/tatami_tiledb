@@ -361,7 +361,7 @@ using DenseCore = typename std::conditional<oracle_, OracularCore<Index_>, Myopi
  ***************************/
 
 template<bool oracle_, typename Value_, typename Index_>
-class Full : public tatami::DenseExtractor<oracle_, Value_, Index_> {
+class Full final : public tatami::DenseExtractor<oracle_, Value_, Index_> {
 public:
     Full(
         const Components& tdb_comp,
@@ -397,7 +397,7 @@ private:
 };
 
 template<bool oracle_, typename Value_, typename Index_>
-class Block : public tatami::DenseExtractor<oracle_, Value_, Index_> {
+class Block final : public tatami::DenseExtractor<oracle_, Value_, Index_> {
 public:
     Block(
         const Components& tdb_comp,
@@ -436,7 +436,7 @@ private:
 };
 
 template<bool oracle_, typename Value_, typename Index_>
-class Index : public tatami::DenseExtractor<oracle_, Value_, Index_> {
+class Index final : public tatami::DenseExtractor<oracle_, Value_, Index_> {
 public:
     Index(
         const Components& tdb_comp,
@@ -493,7 +493,7 @@ private:
  * This should be a function-like macro that accepts a function and executes it inside a user-defined serial section.
  */
 template<typename Value_, typename Index_>
-class DenseMatrix : public tatami::Matrix<Value_, Index_> {
+class DenseMatrix final : public tatami::Matrix<Value_, Index_> {
 public:
     /**
      * @param uri File path (or some other appropriate location) of the TileDB array.
