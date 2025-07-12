@@ -1,8 +1,6 @@
 #ifndef TATAMI_TILEDB_SPARSE_MATRIX_HPP
 #define TATAMI_TILEDB_SPARSE_MATRIX_HPP
 
-#include "tatami_chunked/tatami_chunked.hpp"
-#include <tiledb/tiledb>
 
 #include "serialize.hpp"
 
@@ -11,6 +9,11 @@
 #include <vector>
 #include <stdexcept>
 #include <type_traits>
+#include <cstddef>
+
+#include <tiledb/tiledb>
+#include "tatami_chunked/tatami_chunked.hpp"
+#include "sanisizer/sanisizer.hpp"
 
 /**
  * @file SparseMatrix.hpp
@@ -34,7 +37,7 @@ struct SparseMatrixOptions {
      * Larger caches improve access speed at the cost of memory usage.
      * Small values may be ignored if `require_minimum_cache` is `true`.
      */
-    size_t maximum_cache_size = 100000000;
+    std::size_t maximum_cache_size = sanisizer::cap<std::size_t>(100000000);
 
     /**
      * Whether to automatically enforce a minimum size for the cache, regardless of `maximum_cache_size`.
@@ -59,7 +62,7 @@ struct Workspace {
     CacheBuffer non_target_indices;
 };
 
-inline size_t execute_query(
+inline std::size_t execute_query(
     const Components& tdb_comp,
     tiledb::Subarray& subarray,
     const std::string& attribute,
@@ -67,9 +70,9 @@ inline size_t execute_query(
     const std::string& target_dimname,
     const std::string& non_target_dimname,
     Workspace& work,
-    size_t general_work_offset,
-    size_t target_index_work_offset,
-    size_t work_length,
+    std::size_t general_work_offset,
+    std::size_t target_index_work_offset,
+    std::size_t work_length,
     bool needs_value,
     bool needs_index)
 {
@@ -99,8 +102,8 @@ inline size_t execute_query(
 template<typename Index_>
 struct MyopicCacheParameters {
     Index_ chunk_length;
-    size_t slab_size_in_elements;
-    size_t max_slabs_in_cache;
+    std::size_t slab_size_in_elements;
+    Index_ max_slabs_in_cache;
 };
 
 template<typename Index_>
@@ -120,7 +123,8 @@ public:
         [[maybe_unused]] tatami::MaybeOracle<false, Index_> oracle, 
         const MyopicCacheParameters<Index_>& cache_stats,
         bool needs_value,
-        bool needs_index) :
+        bool needs_index
+    ) :
         my_tdb_comp(tdb_comp),
         my_attribute(attribute),
         my_row(row),
@@ -138,13 +142,16 @@ public:
         // Only storing one slab at a time for the target indices.
         my_work.target_indices.reset(my_tdb_target_dim.type(), my_slab_size);
 
-        size_t total_cache_size = my_slab_size * cache_stats.max_slabs_in_cache;
+        auto total_cache_size = sanisizer::product<std::size_t>(my_slab_size, cache_stats.max_slabs_in_cache);
         if (my_needs_value) {
             my_work.values.reset(tdb_type, total_cache_size);
         }
         if (my_needs_index) {
             my_work.non_target_indices.reset(my_tdb_non_target_dim.type(), total_cache_size);
         }
+
+        // Check that the indptrs will not overflow on resize() in the populate function of fetch_raw().
+        sanisizer::sum<typename decltype(Slab::indptrs)::size_type>(target_chunk_length, 1);
     }
 
 private:
@@ -159,22 +166,22 @@ private:
     const std::string& my_non_target_dimname;
 
     Index_ my_target_chunk_length;
-    size_t my_slab_size;
+    std::size_t my_slab_size;
     bool my_needs_value;
     bool my_needs_index;
     Workspace my_work;
     std::vector<std::pair<Index_, Index_> > my_counts;
 
     struct Slab {
-        size_t offset;
-        std::vector<size_t> indptrs;
+        std::size_t offset;
+        std::vector<std::size_t> indptrs;
     };
-    size_t my_offset = 0;
+    std::size_t my_offset = 0;
     tatami_chunked::LruSlabCache<Index_, Slab> my_cache;
 
 private:
     template<class Configure_>
-    std::pair<size_t, size_t> fetch_raw(Index_ i, Configure_ configure) {
+    std::pair<std::size_t, std::size_t> fetch_raw(Index_ i, Configure_ configure) {
         Index_ chunk = i / my_target_chunk_length;
         Index_ index = i % my_target_chunk_length;
 
@@ -190,7 +197,7 @@ private:
                 Index_ chunk_start = id * my_target_chunk_length;
                 Index_ chunk_length = std::min(my_target_dim_extent - chunk_start, my_target_chunk_length);
 
-                size_t num_nonzero = 0;
+                std::size_t num_nonzero = 0;
                 serialize([&]() -> void {
                     tiledb::Subarray subarray(my_tdb_comp.ctx, my_tdb_comp.array);
                     int rowdex = my_row;
@@ -214,7 +221,7 @@ private:
 
                 auto& indptrs = contents.indptrs;
                 indptrs.clear();
-                indptrs.resize(chunk_length + 1);
+                indptrs.resize(static_cast<decltype(indptrs.size())>(chunk_length) + 1); // unsafe case, we already know it won't overflow (see constructor).
 
                 if (num_nonzero) {
                     my_work.target_indices.compact(0, num_nonzero, my_tdb_target_dim, my_counts);
@@ -328,6 +335,9 @@ public:
         if (my_needs_index) {
             my_work.non_target_indices.reset(my_tdb_non_target_dim.type(), cache_stats.max_cache_size_in_elements);
         }
+
+        // Check that the indptrs will not overflow on resize() in the populate function of fetch_raw().
+        sanisizer::sum<typename decltype(Slab::indptrs)::size_type>(target_chunk_length, 1);
     }
 
 private:
@@ -463,7 +473,7 @@ private:
 
                     auto& slab_indptrs = populate_slab.indptrs;
                     slab_indptrs.clear();
-                    slab_indptrs.resize(chunk_length + 1);
+                    slab_indptrs.resize(static_cast<decltype(slab_indptrs.size())>(chunk_length) + 1); // unsafe cast, we already know it won't overflow.
 
                     while (cIt != cEnd && cIt->first < chunk_end) {
                         slab_indptrs[cIt->first - chunk_start + 1] = cIt->second;
@@ -484,7 +494,7 @@ private:
     }
 
 public:
-    std::pair<size_t, size_t> fetch_block(Index_ i, Index_ block_start, Index_ block_length) {
+    std::pair<std::size_t, std::size_t> fetch_block(Index_ i, Index_ block_start, Index_ block_length) {
         return fetch_raw(
             i,
             [&](tiledb::Subarray& subarray, int rowdex) -> void {
@@ -493,7 +503,7 @@ public:
         );
     }
 
-    std::pair<size_t, size_t> fetch_indices(Index_ i, const std::vector<Index_>& indices) {
+    std::pair<std::size_t, std::size_t> fetch_indices(Index_ i, const std::vector<Index_>& indices) {
         return fetch_raw(
             i,
             [&](tiledb::Subarray& subarray, int rowdex) -> void {
@@ -539,8 +549,8 @@ using CacheParameters = typename std::conditional<oracle_, OracularCacheParamete
 template<typename Value_, typename Index_>
 tatami::SparseRange<Value_, Index_> fill_sparse_range(
     const Workspace& work,
-    size_t work_start,
-    size_t work_length,
+    std::size_t work_start,
+    std::size_t work_length,
     const Dimension& non_target_dim,
     Value_* vbuffer,
     Index_* ibuffer,
@@ -752,7 +762,7 @@ public:
         work.values.copy(info.first, info.second, my_holding_value.data());
         work.non_target_indices.copy(info.first, info.second, my_core.get_tdb_non_target_dim(), my_holding_index.data());
         std::fill_n(buffer, my_non_target_dim_extent, 0);
-        for (size_t i = 0; i < info.second; ++i) {
+        for (decltype(info.second) i = 0; i < info.second; ++i) {
             buffer[my_holding_index[i]] = my_holding_value[i];
         }
         return buffer;
@@ -812,7 +822,7 @@ public:
         work.values.copy(info.first, info.second, my_holding_value.data());
         work.non_target_indices.copy(info.first, info.second, my_core.get_tdb_non_target_dim(), my_holding_index.data());
         std::fill_n(buffer, my_block_length, 0);
-        for (size_t i = 0; i < info.second; ++i) {
+        for (decltype(info.second) i = 0; i < info.second; ++i) {
             buffer[my_holding_index[i] - my_block_start] = my_holding_value[i];
         }
         return buffer;
@@ -866,8 +876,8 @@ public:
         const auto& indices = *my_indices_ptr;
         if (!indices.empty()) {
             auto idx_start = indices.front();
-            my_remapping.resize(indices.back() - idx_start + 1);
-            for (size_t j = 0, end = indices.size(); j < end; ++j) {
+            tatami::resize_container_to_Index_size(my_remapping, indices.back() - idx_start + 1);
+            for (decltype(indices.size()) j = 0, end = indices.size(); j < end; ++j) {
                 my_remapping[indices[j] - idx_start] = j;
             }
         }
@@ -883,7 +893,7 @@ public:
             work.non_target_indices.copy(info.first, info.second, my_core.get_tdb_non_target_dim(), my_holding_index.data());
             auto idx_start = indices.front();
             std::fill_n(buffer, indices.size(), 0);
-            for (size_t i = 0; i < info.second; ++i) {
+            for (decltype(info.second) i = 0; i < info.second; ++i) {
                 buffer[my_remapping[my_holding_index[i] - idx_start]] = my_holding_value[i];
             }
         }
@@ -1015,7 +1025,7 @@ private:
     tiledb_datatype_t my_tdb_type;
 
     std::string my_attribute;
-    size_t my_cache_size_in_bytes;
+    std::size_t my_cache_size_in_bytes;
     bool my_require_minimum_cache;
 
     std::string my_first_dimname, my_second_dimname;
@@ -1084,7 +1094,7 @@ private:
         const auto& tdb_target_dim = (row ? my_tdb_first_dim : my_tdb_second_dim);
         const auto& tdb_non_target_dim = (row ? my_tdb_second_dim : my_tdb_first_dim);
 
-        size_t nonzero_size = 0;
+        std::size_t nonzero_size = 0;
         if (opt.sparse_extract_value) {
             nonzero_size += ::tatami_tiledb::internal::determine_type_size(my_tdb_type);
         }
@@ -1120,7 +1130,7 @@ private:
             // not doing any caching at all, as a hypothetical SoloCore would
             // still need to allocate enough memory for a single dimension
             // element to create a buffer for the TileDB libary.
-            size_t max_slab_size = static_cast<size_t>(non_target_length) * cache_params.chunk_length; // cast to avoid overflow.
+            auto max_slab_size = sanisizer::product<std::size_t>(non_target_length, cache_params.chunk_length);
             if (my_require_minimum_cache) {
                 cache_params.max_cache_size_in_elements = std::max(cache_params.max_cache_size_in_elements, max_slab_size);
             } else if (cache_params.max_cache_size_in_elements < max_slab_size) {
