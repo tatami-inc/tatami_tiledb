@@ -1156,7 +1156,7 @@ private:
             );
 
         } else {
-            tatami_chunked::SlabCacheStats raw_params(
+            tatami_chunked::SlabCacheStats<Index_> raw_params(
                 target_dim_stats.chunk_length,
                 non_target_length,
                 target_dim_stats.num_chunks,
