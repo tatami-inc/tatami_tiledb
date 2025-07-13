@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 project(tatami_tiledb
-    VERSION 2.0.0
+    VERSION 2.0.1
     DESCRIPTION "tatami bindings for TileDB"
     LANGUAGES CXX)
 
