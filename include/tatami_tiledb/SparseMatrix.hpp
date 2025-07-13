@@ -151,7 +151,7 @@ public:
         }
 
         // Check that the indptrs will not overflow on resize() in the populate function of fetch_raw().
-        sanisizer::sum<typename decltype(Slab::indptrs)::size_type>(target_chunk_length, 1);
+        sanisizer::sum<typename decltype(Slab::indptrs)::size_type>(my_target_chunk_length, 1);
     }
 
 private:
@@ -337,7 +337,7 @@ public:
         }
 
         // Check that the indptrs will not overflow on resize() in the populate function of fetch_raw().
-        sanisizer::sum<typename decltype(Slab::indptrs)::size_type>(target_chunk_length, 1);
+        sanisizer::sum<typename decltype(Slab::indptrs)::size_type>(my_target_chunk_length, 1);
     }
 
 private:
