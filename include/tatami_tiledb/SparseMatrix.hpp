@@ -221,7 +221,7 @@ private:
 
                 auto& indptrs = contents.indptrs;
                 indptrs.clear();
-                indptrs.resize(static_cast<decltype(indptrs.size())>(chunk_length) + 1); // unsafe case, we already know it won't overflow (see constructor).
+                indptrs.resize(static_cast<decltype(indptrs.size())>(chunk_length) + 1); // cast is safe, we already know it won't overflow (see constructor).
 
                 if (num_nonzero) {
                     my_work.target_indices.compact(0, num_nonzero, my_tdb_target_dim, my_counts);
@@ -240,7 +240,7 @@ private:
     }
 
 public:
-    std::pair<size_t, size_t> fetch_block(Index_ i, Index_ block_start, Index_ block_length) {
+    std::pair<std::size_t, std::size_t> fetch_block(Index_ i, Index_ block_start, Index_ block_length) {
         return fetch_raw(
             i,
             [&](tiledb::Subarray& subarray, int rowdex) -> void {
@@ -249,7 +249,7 @@ public:
         );
     }
 
-    std::pair<size_t, size_t> fetch_indices(Index_ i, const std::vector<Index_>& indices) {
+    std::pair<std::size_t, std::size_t> fetch_indices(Index_ i, const std::vector<Index_>& indices) {
         return fetch_raw(
             i,
             [&](tiledb::Subarray& subarray, int rowdex) -> void {
@@ -293,7 +293,7 @@ public:
 template<typename Index_>
 struct OracularCacheParameters {
     Index_ chunk_length;
-    size_t max_cache_size_in_elements;
+    std::size_t max_cache_size_in_elements;
 };
 
 template<typename Index_>
@@ -323,7 +323,7 @@ public:
         my_tdb_non_target_dim(tdb_non_target_dim),
         my_non_target_dimname(non_target_dimname),
         my_target_chunk_length(cache_stats.chunk_length),
-        my_max_slab_size(static_cast<size_t>(non_target_length) * my_target_chunk_length),
+        my_max_slab_size(sanisizer::product<std::size_t>(non_target_length, my_target_chunk_length)),
         my_needs_value(needs_value),
         my_needs_index(needs_index),
         my_cache(std::move(oracle), cache_stats.max_cache_size_in_elements)
@@ -352,22 +352,22 @@ private:
     const std::string& my_non_target_dimname;
 
     Index_ my_target_chunk_length;
-    size_t my_max_slab_size;
+    std::size_t my_max_slab_size;
     bool my_needs_value;
     bool my_needs_index;
     Workspace my_work;
     std::vector<std::pair<Index_, Index_> > my_counts;
 
     struct Slab {
-        size_t offset;
-        std::vector<size_t> indptrs;
+        std::size_t offset;
+        std::vector<std::size_t> indptrs;
     };
-    tatami_chunked::OracularVariableSlabCache<Index_, Index_, Slab, size_t> my_cache;
+    tatami_chunked::OracularVariableSlabCache<Index_, Index_, Slab, std::size_t> my_cache;
 
 private:
     template<class Function_>
-    static void sort_by_field(std::vector<std::pair<Index_, size_t> >& indices, Function_ field) {
-        auto comp = [&field](const std::pair<Index_, size_t>& l, const std::pair<Index_, size_t>& r) -> bool {
+    static void sort_by_field(std::vector<std::pair<Index_, std::size_t> >& indices, Function_ field) {
+        auto comp = [&field](const std::pair<Index_, std::size_t>& l, const std::pair<Index_, std::size_t>& r) -> bool {
             return field(l) < field(r);
         };
         if (!std::is_sorted(indices.begin(), indices.end(), comp)) {
@@ -376,25 +376,25 @@ private:
     }
 
     template<class Configure_>
-    std::pair<size_t, size_t> fetch_raw([[maybe_unused]] Index_ i, Configure_ configure) {
+    std::pair<std::size_t, std::size_t> fetch_raw([[maybe_unused]] Index_ i, Configure_ configure) {
         auto info = my_cache.next(
             /* identify = */ [&](Index_ current) -> std::pair<Index_, Index_> {
                 return std::pair<Index_, Index_>(current / my_target_chunk_length, current % my_target_chunk_length);
             }, 
-            /* upper_size = */ [&](Index_) -> size_t {
+            /* upper_size = */ [&](Index_) -> std::size_t {
                 return my_max_slab_size;
             },
-            /* actual_size = */ [&](Index_, const Slab& slab) -> size_t {
+            /* actual_size = */ [&](Index_, const Slab& slab) -> std::size_t {
                 return slab.indptrs.back();
             },
             /* create = */ [&]() -> Slab {
                 return Slab();
             },
-            /* populate = */ [&](std::vector<std::pair<Index_, size_t> >& to_populate, std::vector<std::pair<Index_, size_t> >& to_reuse, std::vector<Slab>& all_slabs) -> void {
+            /* populate = */ [&](std::vector<std::pair<Index_, std::size_t> >& to_populate, std::vector<std::pair<Index_, std::size_t> >& to_reuse, std::vector<Slab>& all_slabs) -> void {
                 // Defragmenting the existing chunks. We sort by offset to make 
                 // sure that we're not clobbering in-use slabs during the copy().
-                sort_by_field(to_reuse, [&](const std::pair<Index_, size_t>& x) -> size_t { return all_slabs[x.second].offset; });
-                size_t running_offset = 0;
+                sort_by_field(to_reuse, [&](const std::pair<Index_, std::size_t>& x) -> std::size_t { return all_slabs[x.second].offset; });
+                std::size_t running_offset = 0;
                 for (auto& x : to_reuse) {
                     auto& reused_slab = all_slabs[x.second];
                     auto& cur_offset = reused_slab.offset;
@@ -416,9 +416,9 @@ private:
                 // to populate the contiguous memory pool that we made available after
                 // defragmentation; then we just update the slab pointers to refer
                 // to the slices of memory corresponding to each slab.
-                sort_by_field(to_populate, [](const std::pair<Index_, size_t>& x) -> Index_ { return x.first; });
+                sort_by_field(to_populate, [](const std::pair<Index_, std::size_t>& x) -> Index_ { return x.first; });
 
-                size_t num_nonzero = 0;
+                std::size_t num_nonzero = 0;
                 serialize([&]() -> void {
                     tiledb::Subarray subarray(my_tdb_comp.ctx, my_tdb_comp.array);
                     int rowdex = my_row;
@@ -429,7 +429,7 @@ private:
                     Index_ run_length = std::min(my_target_dim_extent - run_chunk_start, my_target_chunk_length);
 
                     int dimdex = 1 - rowdex;
-                    for (size_t ci = 1, cend = to_populate.size(); ci < cend; ++ci) {
+                    for (decltype(to_populate.size()) ci = 1, cend = to_populate.size(); ci < cend; ++ci) {
                         Index_ current_chunk_id = to_populate[ci].first;
                         Index_ current_chunk_start = current_chunk_id * my_target_chunk_length;
 
@@ -454,7 +454,7 @@ private:
                         my_work,
                         running_offset,
                         running_offset,
-                        to_populate.size() * my_max_slab_size,
+                        sanisizer::product_unsafe<std::size_t>(to_populate.size(), my_max_slab_size),
                         my_needs_value,
                         my_needs_index
                     );
@@ -473,7 +473,7 @@ private:
 
                     auto& slab_indptrs = populate_slab.indptrs;
                     slab_indptrs.clear();
-                    slab_indptrs.resize(static_cast<decltype(slab_indptrs.size())>(chunk_length) + 1); // unsafe cast, we already know it won't overflow.
+                    slab_indptrs.resize(static_cast<decltype(slab_indptrs.size())>(chunk_length) + 1); // cast is safe, we already know it won't overflow.
 
                     while (cIt != cEnd && cIt->first < chunk_end) {
                         slab_indptrs[cIt->first - chunk_start + 1] = cIt->second;

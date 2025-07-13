@@ -146,14 +146,14 @@ private:
     void compute_delta(T start, const T* pos, std::size_t len, Index_* output) const {
         if constexpr(std::is_integral<T>::value && std::is_signed<T>::value) {
             if (start < 0) {
-                for (std::size_t i = 0; i < len; ++i) {
+                for (decltype(len) i = 0; i < len; ++i) {
                     auto curpos = pos[i];
                     if (curpos >= 0) {
                         // Protect against overflow as the difference between a non-negative and negative value might exceed 'T' (or its automatically promoted equivalent).
                         // We expect that the theoretical value of 'curpos - start' could fit in an Index_, as it must be storable in 'output'.
                         // This implies that 'curpos' could fit in an Index_, as 'curpos' is smaller than 'curpos - start' for 'curpos >= 0, start < 0'.
-                        // Similarly, '-start' could fit in an index, though we compute '-(start + 1)' to avoid overflow, e.g., -128 => 127 for a signed 8-bit integer.
-                        // Note that we need to +1 as we added 1 to compute 'flipped'.
+                        // Similarly, '-start' could fit in an Index_, though we compute '-(start + 1)' to avoid overflow, e.g., -128 => 127 for a signed 8-bit integer.
+                        // Note that we need to +1 the sum to counteract the effect of adding 1 to 'start' before negation.
                         output[i] = static_cast<Index_>(curpos) + static_cast<Index_>(-(start + 1)) + 1;
                     } else {
                         output[i] = curpos - start;
@@ -165,7 +165,7 @@ private:
 
         // All elements of pos should be greater than or equal to 'start', so if 'start >= 0',
         // then 'pos[i] >= 0' and we can freely subtract without worrying about overflow.
-        for (std::size_t i = 0; i < len; ++i) {
+        for (decltype(len) i = 0; i < len; ++i) {
             output[i] = pos[i] - start;
         }
     }
