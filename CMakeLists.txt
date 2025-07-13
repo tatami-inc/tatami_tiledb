@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 project(tatami_tiledb
-    VERSION 2.0.0
+    VERSION 2.0.1
     DESCRIPTION "tatami bindings for TileDB"
     LANGUAGES CXX)
 
@@ -14,10 +14,11 @@ option(TATAMI_TILEDB_FETCH_EXTERN "Automatically fetch tatami_tiledb's external 
 if(TATAMI_TILEDB_FETCH_EXTERN)
     add_subdirectory(extern)
 else()
-    find_package(tatami_tatami_chunked CONFIG REQUIRED)
+    find_package(tatami_tatami_chunked 2.1.0 CONFIG REQUIRED)
+    find_package(ltla_sanisizer 0.1.1 CONFIG REQUIRED)
 endif()
 
-target_link_libraries(tatami_tiledb INTERFACE tatami::tatami_chunked)
+target_link_libraries(tatami_tiledb INTERFACE tatami::tatami_chunked ltla::sanisizer)
 
 option(TATAMI_TILEDB_FIND_TILEDB "Try to find and link to TileDB for tatami_tiledb." ON)
 if(TATAMI_TILEDB_FIND_TILEDB)

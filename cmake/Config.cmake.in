@@ -1,7 +1,9 @@
 @PACKAGE_INIT@
 
 include(CMakeFindDependencyMacro)
-find_dependency(tatami_tatami_chunked CONFIG REQUIRED)
+find_dependency(tatami_tatami_chunked 2.1.0 CONFIG REQUIRED)
+find_dependency(ltla_sanisizer 0.1.1 CONFIG REQUIRED)
+
 if(@TATAMI_TILEDB_FIND_TILEDB@)
     find_package(TileDB)
 endif()
