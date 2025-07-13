@@ -60,10 +60,10 @@
     <name>tatami_tiledb::DenseMatrixOptions</name>
     <filename>structtatami__tiledb_1_1DenseMatrixOptions.html</filename>
     <member kind="variable">
-      <type>size_t</type>
+      <type>std::size_t</type>
       <name>maximum_cache_size</name>
       <anchorfile>structtatami__tiledb_1_1DenseMatrixOptions.html</anchorfile>
-      <anchor>a48fa577abbde5514e1a35c3941fbe810</anchor>
+      <anchor>a9a9b3530f10ff826eb98b316a1fc0f6c</anchor>
       <arglist></arglist>
     </member>
     <member kind="variable">
@@ -106,10 +106,10 @@
     <name>tatami_tiledb::SparseMatrixOptions</name>
     <filename>structtatami__tiledb_1_1SparseMatrixOptions.html</filename>
     <member kind="variable">
-      <type>size_t</type>
+      <type>std::size_t</type>
       <name>maximum_cache_size</name>
       <anchorfile>structtatami__tiledb_1_1SparseMatrixOptions.html</anchorfile>
-      <anchor>a7c809c3c948980fb7b7216bb73180a9f</anchor>
+      <anchor>acffdf29e1c01b7a7b6f9456d77397954</anchor>
       <arglist></arglist>
     </member>
     <member kind="variable">

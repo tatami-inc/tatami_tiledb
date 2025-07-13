@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['maximum_5fcache_5fsize_0',['maximum_cache_size',['../structtatami__tiledb_1_1DenseMatrixOptions.html#a48fa577abbde5514e1a35c3941fbe810',1,'tatami_tiledb::DenseMatrixOptions::maximum_cache_size'],['../structtatami__tiledb_1_1SparseMatrixOptions.html#a7c809c3c948980fb7b7216bb73180a9f',1,'tatami_tiledb::SparseMatrixOptions::maximum_cache_size']]]
+  ['index_0',['index',['https://tatami-inc.github.io/tatami/structtatami_1_1CompressedSparseContents.html#a5b30cd6415c0e3cfd91b31590f16bc58',1,'tatami::CompressedSparseContents::index'],['https://tatami-inc.github.io/tatami/structtatami_1_1FragmentedSparseContents.html#a8c1a2bebb066b64451576dc356877091',1,'tatami::FragmentedSparseContents::index'],['https://tatami-inc.github.io/tatami/structtatami_1_1SparseRange.html#af61bafe43fadb90cee6162ac79bfdd3d',1,'tatami::SparseRange::index']]]
 ];
