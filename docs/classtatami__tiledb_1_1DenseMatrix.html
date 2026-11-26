@@ -382,7 +382,7 @@ class tatami_tiledb::DenseMatrix&lt; Value_, Index_ &gt;</div><p>TileDB-backed d
   </table>
   </dd>
 </dl>
-<p>Numeric dense matrix stored in a 2-dimensional TileDB array. Chunks of data are loaded from file as needed by <code>tatami::Extractor</code> objects, with additional caching to avoid repeated reads from disk. The size of cached chunks is determined by the extent of the tiles in the TileDB array.</p>
+<p>Numeric dense matrix stored in a 2-dimensional TileDB array. Chunks of data are loaded from file as needed by <code><a class="elRef" href="https://tatami-inc.github.io/tatami/namespacetatami.html#a61e307f87e00e2cae106359a1ec0c2ef">tatami::Extractor</a></code> objects, with additional caching to avoid repeated reads from disk. The size of cached chunks is determined by the extent of the tiles in the TileDB array.</p>
 <p>The TileDB library is thread-safe so no additional work is required to use this class in parallel code. Nonetheless, users can force all calls to TileDB to occur in serial by defining the <code>TATAMI_TILEDB_PARALLEL_LOCK</code> macro. This should be a function-like macro that accepts a function and executes it inside a user-defined serial section. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a45797084654f5dff590d3d7feeb17ad4" name="a45797084654f5dff590d3d7feeb17ad4"></a>

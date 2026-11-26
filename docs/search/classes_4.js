@@ -1,8 +1,8 @@
 var searchData=
 [
-  ['fillcompressedsparsecontentsoptions_0',['FillCompressedSparseContentsOptions',['https://tatami-inc.github.io/tatami/structtatami_1_1FillCompressedSparseContentsOptions.html',1,'tatami']]],
-  ['fixedvectororacle_1',['FixedVectorOracle',['https://tatami-inc.github.io/tatami/classtatami_1_1FixedVectorOracle.html',1,'tatami']]],
-  ['fixedvieworacle_2',['FixedViewOracle',['https://tatami-inc.github.io/tatami/classtatami_1_1FixedViewOracle.html',1,'tatami']]],
+  ['fixedvectororacle_0',['FixedVectorOracle',['https://tatami-inc.github.io/tatami/classtatami_1_1FixedVectorOracle.html',1,'tatami']]],
+  ['fixedvieworacle_1',['FixedViewOracle',['https://tatami-inc.github.io/tatami/classtatami_1_1FixedViewOracle.html',1,'tatami']]],
+  ['forceddense_2',['ForcedDense',['https://tatami-inc.github.io/tatami/classtatami_1_1ForcedDense.html',1,'tatami']]],
   ['fragmentedsparsecolumnmatrix_3',['FragmentedSparseColumnMatrix',['https://tatami-inc.github.io/tatami/classtatami_1_1FragmentedSparseColumnMatrix.html',1,'tatami']]],
   ['fragmentedsparsecontents_4',['FragmentedSparseContents',['https://tatami-inc.github.io/tatami/structtatami_1_1FragmentedSparseContents.html',1,'tatami']]],
   ['fragmentedsparsematrix_5',['FragmentedSparseMatrix',['https://tatami-inc.github.io/tatami/classtatami_1_1FragmentedSparseMatrix.html',1,'tatami']]],
