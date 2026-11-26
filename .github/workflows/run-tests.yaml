@@ -19,9 +19,15 @@ jobs:
             os: ubuntu-latest,
             cov: true
           }
+        - {
+            name: "Ubuntu Latest GCC, coverage enabled", 
+            os: ubuntu-latest,
+            release: true
+          }
+
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - name: Get latest CMake
       uses: lukka/get-cmake@latest
@@ -30,34 +36,37 @@ jobs:
       id: cache
       with:
         path: libtiledb
-        key: tiledb-2.26.2
+        key: tiledb-2.30.1
 
     - name: Install TileDB
       if: steps.cache.outputs.cache-hit != 'true'
       run: |
-        sudo apt-get install wget
         mkdir libtiledb
         cd libtiledb
-        wget https://github.com/TileDB-Inc/TileDB/releases/download/2.26.2/tiledb-linux-x86_64-2.26.2-30fc114.tar.gz -O tiledb.tar.gz
+        wget https://github.com/TileDB-Inc/TileDB/releases/download/2.30.1/tiledb-linux-x86_64-2.30.1-6ea48ca.tar.gz -O tiledb.tar.gz
         tar -xvf tiledb.tar.gz
 
     - name: Configure the build with coverage
       if: ${{ matrix.config.cov }}
-      run: cmake -S . -B build -DCODE_COVERAGE=ON -DCMAKE_PREFIX_PATH=libtiledb
+      run: cmake -S . -B build -DCODE_COVERAGE=ON -DCMAKE_PREFIX_PATH=libtiledb -DCMAKE_BUILD_TYPE=Debug
+
+    - name: Configure release build
+      if: ${{ matrix.config.release }}
+      run: cmake -S . -B build -DCMAKE_PREFIX_PATH=libtiledb -DCMAKE_BUILD_TYPE=Release
 
     - name: Run the build
       run: cmake --build build
 
     - name: Run the tests
       run: |
-        cd build
+        cd build/tests
         # Avoid using ctest because it's so slow; it starts a
         # new process for each individual test, which is crazy.
-        for exe in $(ctest --show-only=json-v1 | jq -r ".tests[] | .command | .[0]"  | sort | uniq)
+        for exe in $(ls *test)
         do
             echo "#### RUNNING ${exe} ####"
             echo 
-            ${exe} --gtest_brief=1
+            ./${exe} --gtest_brief=1
             echo
         done 
 
