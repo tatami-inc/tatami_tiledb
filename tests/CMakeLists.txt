@@ -37,6 +37,7 @@ endmacro()
 add_executable(libtest
     src/DenseMatrix.cpp
     src/SparseMatrix.cpp
+    src/process_consecutive_indices.cpp
     src/utils.cpp
 )
 decorate_test(libtest)

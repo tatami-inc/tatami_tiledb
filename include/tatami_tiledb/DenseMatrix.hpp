@@ -3,6 +3,7 @@
 
 #include "serialize.hpp"
 #include "utils.hpp"
+#include "process_consecutive_indices.hpp"
 
 #include <string>
 #include <memory>
@@ -175,7 +176,7 @@ public:
             i,
             buffer,
             [&](tiledb::Subarray& subarray, int rowdex) -> void {
-                tatami::process_consecutive_indices<Index_>(
+                process_consecutive_indices<Index_>(
                     indices.data(),
                     indices.size(),
                     [&](Index_ s, Index_ l) -> void {
